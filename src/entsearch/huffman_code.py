@@ -1,4 +1,3 @@
-
 from typing import Union
 
 
@@ -13,6 +12,7 @@ class Leaf:
     proba: float
         The probability of the class.
     """
+
     def __init__(self, element: int, proba: float):
         self.element = element
         self.proba = proba
@@ -28,6 +28,7 @@ class Leaf:
         if code_dict is not None:
             code_dict[self.element] = self.code
 
+
 class Node:
     """
     Node object
@@ -39,6 +40,7 @@ class Node:
     child2: Leaf or Node
         The right child of the node.
     """
+
     def __init__(self, child1, child2):
         self.right = child1
         self.left = child2
@@ -54,15 +56,17 @@ class Node:
         self.right.set_code(prefix + "0", code_dict=code_dict)
         self.left.set_code(prefix + "1", code_dict=code_dict)
 
+
 class ListElement:
     """
-    Element object of chained list 
+    Element object of chained list
 
     Parameters
     ----------
     data: Leaf or Node
         The data of the element.
     """
+
     def __init__(self, data: Union[Leaf, Node]):
         self.data = data
         self.next_element = None
@@ -70,15 +74,17 @@ class ListElement:
     def __repr__(self) -> str:
         return self.data.__repr__()
 
+
 class ChainList:
     """
     Chained list object
-    
+
     Parameters
     ----------
     root_element: ListElement
         The root element of the chained list.
     """
+
     def __init__(self, root_element: ListElement = None):
         self.next_element = root_element
 
