@@ -1,164 +1,88 @@
-from typing import Union
+import heapq
+import numpy as np
 
 
-class Leaf:
+def build_Huffman_tree(frequencies):
     """
-    Leaf object
+    Build a Huffman tree from the given frequencies.
 
     Parameters
     ----------
-    element: int
-        The element (e.g. class) of the leaf
-    proba: float
-        The probability of the class.
-    """
-
-    def __init__(self, element: int, proba: float):
-        self.element = element
-        self.proba = proba
-
-    def __repr__(self) -> str:
-        """
-        Print the leaf.
-        """
-        return "Leaf " + str(self.element) + " (" + str(self.proba) + ")"
-
-    def set_code(self, prefix, code_dict=None):
-        self.code = prefix
-        if code_dict is not None:
-            code_dict[self.element] = self.code
-
-
-class Node:
-    """
-    Node object
-
-    Parameters
-    ----------
-    child1: Leaf or Node
-        The left child of the node.
-    child2: Leaf or Node
-        The right child of the node.
-    """
-
-    def __init__(self, child1, child2):
-        self.right = child1
-        self.left = child2
-        self.proba = child1.proba + child2.proba
-
-    def __repr__(self) -> str:
-        """
-        Print the node.
-        """
-        return "Node (" + str(self.proba) + ")"
-
-    def set_code(self, prefix, code_dict=None):
-        self.right.set_code(prefix + "0", code_dict=code_dict)
-        self.left.set_code(prefix + "1", code_dict=code_dict)
-
-
-class ListElement:
-    """
-    Element object of chained list
-
-    Parameters
-    ----------
-    data: Leaf or Node
-        The data of the element.
-    """
-
-    def __init__(self, data: Union[Leaf, Node]):
-        self.data = data
-        self.next_element = None
-
-    def __repr__(self) -> str:
-        return self.data.__repr__()
-
-
-class ChainList:
-    """
-    Chained list object
-
-    Parameters
-    ----------
-    root_element: ListElement
-        The root element of the chained list.
-    """
-
-    def __init__(self, root_element: ListElement = None):
-        self.next_element = root_element
-
-    def add_element(self, element: ListElement):
-        """
-        Add an element to the chained list.
-
-        Parameters
-        ----------
-        element: ListElement
-            The element to add to the chained list.
-        """
-        old = self
-        current = old.next_element
-        while current is not None:
-            if current.data.proba >= element.data.proba:
-                element.next_element = current
-                old.next_element = element
-                return
-            old = current
-            current = current.next_element
-        old.next_element = element
-
-    def pop(self):
-        """
-        Pop root element from the list
-        """
-        element = self.next_element
-        self.next_element = element.next_element
-        return element
-
-    def __repr__(self) -> str:
-        """
-        Print the chained list.
-        """
-        current = self.next_element
-        string = ""
-        if current is None:
-            return string
-        while current is not None:
-            string += current.__repr__() + " -> "
-            current = current.next_element
-        return string[:-4]
-
-
-def huffman_algorithm(proba):
-    """
-    Algorithm to build a Huffman code.
-
-    Parameters
-    ----------
-    proba: list of float
-        The list of probabilities of each leaf.
+    frequencies : list of int
+        Frequencies of the symbols.
 
     Returns
     -------
-    code_dict: dict
-        The dictionary of the code of each leaf.
+    children : dict
+        Dictionary representing the children of each node.
     """
-    # Init queue with insertion sort on leaf probabilities
-    queue = ChainList()
-    for i in range(len(proba)):
-        node = Leaf(i, proba=proba[i])
-        queue.add_element(ListElement(node))
+    m = len(frequencies)
+    heap = [(frequencies[i], i) for i in range(m)]
+    heapq.heapify(heap)
 
-    # While there is more than one node in the queue:
-    while queue.next_element.next_element is not None:
-        # Remove the two nodes with lowest probability from the queue.
-        node1 = queue.pop().data
-        node2 = queue.pop().data
-        # Merge those two nodes into a bigger one to insert into the queue.
-        queue.add_element(ListElement(Node(node1, node2)))
+    children = {}
 
-    # Once the tree is built, enumerate the tree to find the code of each leaf.
-    code_dict = {}
-    queue.next_element.data.set_code("", code_dict=code_dict)
-    return code_dict
+    index = len(frequencies)
+    while len(heap) > 1:
+        min1, min2 = heapq.heappop(heap), heapq.heappop(heap)
+        heapq.heappush(heap, (min1[0] + min2[0], index))
+        children[index] = (min1[1], min2[1])
+        index += 1
+    return children
+
+
+def get_codes(children, prefix=[], root_index=None, codes={}):
+    """
+    Get the codes for each symbol from the Huffman tree recursively.
+
+    Parameters
+    ----------
+    children : dict
+        Dictionary representing the children of each node.
+    prefix : list of int
+        Prefix of the code.
+    root_index : int
+        Index of the root node.
+    codes : dict
+        Dictionary representing the codes of each symbol.
+
+    Returns
+    -------
+    codes : dict
+        Dictionary representing the codes of each symbol.
+    """
+    if root_index is None:
+        root_index = max(children)
+    if root_index not in children:
+        codes[root_index] = prefix
+    else:
+        get_codes(children, prefix + [0], children[root_index][0], codes)
+        get_codes(children, prefix + [1], children[root_index][1], codes)
+
+
+def Huffman_matrix(frequencies):
+    """
+    Build a Huffman matrix from the given frequencies.
+
+    Parameters
+    ----------
+    frequencies : list of int
+        Frequencies of the symbols.
+
+    Returns
+    -------
+    S : numpy.ndarray
+        Huffman matrix. Each column represents the code of a symbol.
+    """
+    children = build_Huffman_tree(frequencies)
+    codes = {}
+    get_codes(children, codes=codes)
+
+    m = len(frequencies)
+    M = max((len(codes[i]) for i in codes))
+    S = np.zeros((M, m), dtype=np.int8)
+    S[:] = -1
+    for i in range(m):
+        S[: len(codes[i]), i] = codes[i]
+
+    return S
