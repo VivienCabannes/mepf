@@ -78,11 +78,11 @@ def Huffman_matrix(frequencies):
     codes = {}
     get_codes(children, codes=codes)
 
-    m = len(frequencies)
     M = max((len(codes[i]) for i in codes))
-    S = np.zeros((M, m), dtype=np.int8)
+    m = len(frequencies)
+    S = np.zeros((m, M), dtype=np.int8)
     S[:] = -1
     for i in range(m):
-        S[: len(codes[i]), i] = codes[i]
+        S[i, :len(codes[i])] = codes[i]
 
     return S
