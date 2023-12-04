@@ -1,8 +1,17 @@
+"""
+Huffman code implementation
+
+Notes
+-----
+This code is minimalistic and not intended for production use.
+In particular, production would update the Huffman tree dynamically,
+which would likely require an other implementation of binary trees.
+"""
 import heapq
 import numpy as np
 
 
-def build_Huffman_tree(frequencies):
+def _huffman_tree(frequencies):
     """
     Build a Huffman tree from the given frequencies.
 
@@ -10,16 +19,19 @@ def build_Huffman_tree(frequencies):
     ----------
     frequencies : list of int
         Frequencies of the symbols.
+    return_counts : bool
+        If True, return the counts of each symbol.
 
     Returns
     -------
     children : dict
         Dictionary representing the children of each node.
+    counts: dict
+        Dictionary representing the counts of each symbol.
     """
     m = len(frequencies)
     heap = [(frequencies[i], i) for i in range(m)]
     heapq.heapify(heap)
-
     children = {}
 
     index = len(frequencies)
@@ -31,7 +43,7 @@ def build_Huffman_tree(frequencies):
     return children
 
 
-def get_codes(children, prefix=[], root_index=None, codes={}):
+def _get_codes(children, prefix=[], root_index=None, codes={}):
     """
     Get the codes for each symbol from the Huffman tree recursively.
 
@@ -52,15 +64,20 @@ def get_codes(children, prefix=[], root_index=None, codes={}):
         Dictionary representing the codes of each symbol.
     """
     if root_index is None:
+        # at initialization, we find root node as the one with maximal index
         root_index = max(children)
     if root_index not in children:
+        # if the node is a leaf, we store its code which is the current prefix
         codes[root_index] = prefix
     else:
-        get_codes(children, prefix + [0], children[root_index][0], codes)
-        get_codes(children, prefix + [1], children[root_index][1], codes)
+        # go down the left branch, and add 0 to the code prefix
+        _get_codes(children, prefix + [0], children[root_index][0], codes)
+        # go down the right branch, and add 1 to the code prefix
+        _get_codes(children, prefix + [1], children[root_index][1], codes)
+    return codes
 
 
-def Huffman_matrix(frequencies):
+def huffman_codes(frequencies):
     """
     Build a Huffman matrix from the given frequencies.
 
@@ -74,10 +91,12 @@ def Huffman_matrix(frequencies):
     S : numpy.ndarray
         Huffman matrix. Each column represents the code of a symbol.
     """
-    children = build_Huffman_tree(frequencies)
-    codes = {}
-    get_codes(children, codes=codes)
+    # build the Huffman tree
+    children = _huffman_tree(frequencies)
+    # explore the tree to get the codes for each elements
+    codes = _get_codes(children)
 
+    # write this code in matrix form
     M = max((len(codes[i]) for i in codes))
     m = len(frequencies)
     S = np.zeros((m, M), dtype=np.int8)
