@@ -78,15 +78,13 @@ class Node:
 class Tree:
     def __init__(self, root: Node):
         self.root = root
+        self.root.update_depth()
 
     def __repr__(self):
         return f"HuffmanTree with root at {id(self.root)}"
 
     def __str__(self):
         return self.root._get_print()
-
-    def update_depth(self):
-        self.root.update_depth(0)
 
 
 # -----------------------------------------------------------------------------
