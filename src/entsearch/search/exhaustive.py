@@ -1,6 +1,6 @@
 
 import numpy as np
-from ..huffman_code import Huffman_matrix
+from ..huffman import huffman_codes
 
 
 def dichotomic_baseline(Y):
@@ -22,7 +22,7 @@ def dichotomic_baseline(Y):
         Array of the estimated probabilities of the modes.
     """
     n, m = Y.shape
-    S = Huffman_matrix([1 for i in range(m)])
+    S = huffman_codes([1 for i in range(m)])
     T = (Y @ S != -1).sum(axis=1).cumsum()
     p_hat = Y.cumsum(axis=0)
     p_hat /= np.arange(1, n + 1)[:, np.newaxis]

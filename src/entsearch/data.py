@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def sample_dirichlet(alpha):
+def sample_dirichlet(alpha, generator=np.random):
     """
     Sample from a Dirichlet distribution
 
@@ -9,13 +9,15 @@ def sample_dirichlet(alpha):
     ----------
     alpha : array of shape (m,)
         Parameters of the distribution
+    generator : numpy.random.Generator
+        Random number generator
 
     Returns
     -------
     proba : array of shape (m,)
         Probability distribution
     """
-    proba = np.random.dirichlet(alpha)
+    proba = generator.dirichlet(alpha)
     proba.sort()
     return proba[::-1]
 
