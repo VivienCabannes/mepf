@@ -98,5 +98,4 @@ def huffman_codes(frequencies):
     S[:] = -1
     for i in range(m):
         S[i, : len(codes[i])] = codes[i]
-
     return S

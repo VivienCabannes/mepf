@@ -19,7 +19,6 @@ class SearchTree(Tree):
     codes: list of list of int
         List of all leaf codes according to their position in the tree.
     """
-
     def __init__(self, codes):
         """
         Initialize the search tree.
@@ -119,44 +118,40 @@ class SearchTree(Tree):
             partition.append(node)
         return partition
 
-    @staticmethod
-    def get_nb_queries_partition(partition):
+    def process_batch(self, y_cat, epsilon=0, adapt=True, rng=np.random.default_rng()):
         """
-        Get the number of queries made to build the partition
+        Process a batch of observations to update the tree
 
         Parameters
         ----------
-        partition: list of Node
-            List of nodes in the partition
+        y_cat: list of int
+            Sequential samples of the categorical variable
+        epsilon: float, optional
+            Stopping criterion for the difference in probability between the
+            empirical mode and the sets in the found partition
+        adapt: bool, optional
+            Whether to adapt the tree to the partition found
+        rng: numpy.random.Generator, optional
+            Random number generator to break ties in comparision
 
         Returns
         -------
         nb_queries: int
             Number of queries to identify the partition
         """
+        m = len(self.codes)
+        partition = self.find_admissible_partition(y_cat, epsilon=epsilon)
+        if adapt:
+            root = self.huffman_build(partition, return_list=False)
+            self.replace_root(root)
+            self.get_codes(m)
         nb_queries = 0
         for node in partition:
             nb_queries += node.value * node.depth
         return nb_queries
 
-    def get_nb_queries(self, y_cat):
-        """
-        Get the number of queries made to identify the empirical mode
-        with batch search
-
-        Parameters
-        ----------
-        y_cat: list of int
-            Sequential samples of the categorical variable
-
-        Returns
-        -------
-        nb_queries: int
-            Number of queries to identify the empirical mode
-        """
-        self.reset_value()
-        partition = self.find_admissible_partition(y_cat)
-        return self.get_nb_queries_partition(partition)
+    def get_nb_queries(self, y_cat, rng=np.random.default_rng()):
+        return self.process_batch(y_cat, epsilon=0, adapt=False, rng=rng)
 
     def get_nb_queries_sequential(self, y_cat):
         """

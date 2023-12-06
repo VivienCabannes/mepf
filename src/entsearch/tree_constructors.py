@@ -7,7 +7,7 @@ import numpy as np
 
 
 class Leaf:
-    def __init__(self, value: int = 0, label: int = None):
+    def __init__(self, value: int = None, label: int = None):
         self.value = value
         self.label = label
         self.parent = None
@@ -16,8 +16,14 @@ class Leaf:
     def update_depth(self, depth):
         self.depth = depth
 
+    def get_max_depth(self):
+        return self.depth
+ 
+    def fill_codes(self, prefix, codes):
+        codes[self.label] = prefix
+
     def reset_value(self):
-        self.value = 0
+        self.value = None
 
     def get_set(self):
         self.set = [self.label]
@@ -43,15 +49,16 @@ class Leaf:
 class Node:
     def __init__(self, left: Leaf = None, right: Leaf = None):
         if left is None:
-            left = Leaf()
-        if right is None:
-            right = Leaf()
-
-        self.left = left
-        self.right = right
-        self.left.parent = self
-        self.right.parent = self
-        self.value = self.left.value + self.right.value
+            assert right is None, "Cannot have only one child"
+            self.left = Leaf()
+            self.right = Leaf()
+            self.value = None
+        else:
+            self.left = left
+            self.right = right
+            self.left.parent = self
+            self.right.parent = self
+            self.value = self.left.value + self.right.value
         self.parent = None
         self.depth = None
 
@@ -60,8 +67,27 @@ class Node:
         self.left.update_depth(depth + 1)
         self.right.update_depth(depth + 1)
 
+    def get_max_depth(self):
+        return max(self.left.get_max_depth(), self.right.get_max_depth())
+
+    def fill_codes(self, prefix, codes):
+        """
+        Parameters
+        ----------
+        prefix : ndarray of size (max_depth,)
+            The prefix of the code.
+        codes : ndarray of size (m, max_depth)
+            The list of codes to be filled.
+        """
+        right_prefix = prefix.copy()
+        left_prefix = prefix.copy()
+        right_prefix[self.depth] = 1
+        left_prefix[self.depth] = 0
+        self.right.fill_codes(right_prefix, codes)
+        self.left.fill_codes(left_prefix, codes)
+
     def reset_value(self):
-        self.value = 0
+        self.value = None
         self.left.reset_value()
         self.right.reset_value()
 
@@ -91,8 +117,6 @@ class Node:
             left_length -= 8
         if isinstance(self.right, Leaf):
             right_length -= 8
-        # current = " " * (left_length - 3)
-        # current += f"Node: {self.value:3d}" + " " * (right_length - 3)
         current = " " * (left_length - length)
         current += "Node: " + format(self.value, str(2 * length - 3) + "d")
         current += " " * (right_length - length)
@@ -122,11 +146,34 @@ class Tree:
         self.root = root
         self.root.update_depth(0)
 
+    def get_depth(self):
+        return self.root.get_max_depth()
+
+    def get_codes(self, m):
+        """
+        Get the codes of the leaves associated with the tree
+
+        Parameters
+        ----------
+        m : int
+            Number of leaves
+
+        Returns
+        -------
+        codes : ndarray of size (m, max_depth)
+            The list of codes
+        """
+        length = self.get_depth()
+        prefix = np.full(length, -1, dtype=int)
+        codes = np.zeros((m, length), dtype=int)
+        self.root.fill_codes(prefix, codes)
+        return codes
+
     def __repr__(self):
         return f"HuffmanTree with root at {id(self.root)}"
 
     def __str__(self):
-        length = max(len(str(self.root.value)) // 2 + 1, 2)
+        length = max(len(str(self.root.value)) // 2 + 1, 3)
         return self.root._get_print(length=length)
 
     def reset_value(self):
@@ -135,94 +182,8 @@ class Tree:
     def replace_root(self, new_root):
         root = self.root
         self.root = new_root
+        self.root.update_depth(0)
         del root
-
-    def init_from_codes(self, codes):
-        """
-        Initialize the tree from integer codes.
-
-        Parameters
-        ----------
-        codes : list of list of int
-            The codes of each class to initialize the tree.
-
-        Returns
-        -------
-        y2leaf : dict of int: Leaf
-            Dictionary mapping each class to its corresponding leaf.
-        """
-        Tree.__init__(self,  Node())
-        y2leaf = {}
-
-        # to build the search tree, iterate over the leaves
-        for y in range(len(codes)):
-            code = codes[y]
-            y2leaf[y] = Leaf(0, y)
-            current = self.root
-            # iterate over the leaf code
-            for i in range(len(code)):
-                # if c_i=1, we go down to the right child
-                if code[i] == 1:
-                    if isinstance(current.right, Leaf):
-                        assert (
-                            current.right.label is None
-                        ), f"Prefix error:{code}->{current.right.label} & {y}"
-                        self.replace(current.right, Node())
-                    current = current.right
-
-                # if c_i=0, we go down to the left child
-                if code[i] == 0:
-                    if isinstance(current.left, Leaf):
-                        assert (
-                            current.left.label is None
-                        ), f"Prefix error:{code}->{current.right.label} & {y}"
-                        self.replace(current.left, Node())
-                    current = current.left
-
-                # if c_i=-1, we are at the position of the leaf
-                if code[i] == -1:
-                    break
-            self.replace(current, y2leaf[y])
-        return y2leaf
-
-    def huffman_build(self, nodes, return_list=False, rng=np.random.default_rng()):
-        """
-        Build Huffman tree on top of nodes (seen as leaves)
-
-        Parameters
-        ----------
-        node_list : list of Nodes
-            The nodes to use as based leaves for the sup-tree.
-        return_list : bool, optional
-            Whether to return the Huffman list of nodes
-        rng : numpy.random.Generator, optional
-            The random number generator to use. The default is
-            numpy.random.default_rng().
-
-        Returns
-        -------
-        node: Node
-            Root of the Huffman tree
-        huffman_list: list, if `return_list`
-            List of nodes in the order they were merged in the Huffman tree
-        """
-        # randomness to break ties in heap
-        m = len(nodes)
-        noise = rng.random(size=m) / ((2 * m)) ** 2
-
-        # use heap to build the Huffman tree
-        heap = [(nodes[i].value + noise[i], nodes[i]) for i in range(m)]
-        heapq.heapify(heap)
-        huffman_list = []
-        while len(heap) > 1:
-            left, right = heapq.heappop(heap), heapq.heappop(heap)
-            huffman_list.append(left[1])
-            huffman_list.append(right[1])
-            node = Node(left[1], right[1])
-            heapq.heappush(heap, (left[0] + right[0], node))
-        if return_list:
-            return node, huffman_list
-        return node
 
     @staticmethod
     def swap(node1, node2):
@@ -274,3 +235,93 @@ class Tree:
         new_node.parent = node.parent
         new_node.update_depth(node.depth)
         del node
+
+    def huffman_build(self, nodes, return_list=False, rng=np.random.default_rng()):
+        """
+        Build Huffman tree on top of nodes (seen as leaves)
+
+        Parameters
+        ----------
+        node_list : list of Nodes
+            The nodes to use as based leaves for the sup-tree.
+        return_list : bool, optional
+            Whether to return the Huffman list of nodes
+        rng : numpy.random.Generator, optional
+            The random number generator to use. The default is
+            numpy.random.default_rng().
+
+        Returns
+        -------
+        node: Node
+            Root of the Huffman tree
+        huffman_list: list, if `return_list`
+            List of nodes in the order they were merged in the Huffman tree
+        """
+        # randomness to break ties in heap
+        m = len(nodes)
+        noise = rng.random(size=m) / ((2 * m)) ** 2
+
+        # use heap to build the Huffman tree
+        heap = [(nodes[i].value + noise[i], nodes[i]) for i in range(m)]
+        heapq.heapify(heap)
+        huffman_list = []
+        while len(heap) > 1:
+            left, right = heapq.heappop(heap), heapq.heappop(heap)
+            huffman_list.append(left[1])
+            huffman_list.append(right[1])
+            node = Node(left[1], right[1])
+            heapq.heappush(heap, (left[0] + right[0], node))
+        if return_list:
+            return node, huffman_list
+        return node
+
+    def init_from_codes(self, codes):
+        """
+        Initialize the tree from integer codes.
+
+        This class is useful to initialize the tree from the real Huffman code,
+        instead of using fake counts.
+
+        Parameters
+        ----------
+        codes : list of list of int
+            The codes of each class to initialize the tree.
+
+        Returns
+        -------
+        y2leaf : dict of int: Leaf
+            Dictionary mapping each class to its corresponding leaf.
+        """
+        Tree.__init__(self,  Node())
+        y2leaf = {}
+
+        # to build the search tree, iterate over the leaves
+        for y in range(len(codes)):
+            code = codes[y]
+            y2leaf[y] = Leaf(0, y)
+            current = self.root
+            # iterate over the leaf code
+            for i in range(len(code)):
+                # if c_i=1, we go down to the right child
+                if code[i] == 1:
+                    if isinstance(current.right, Leaf):
+                        assert (
+                            current.right.label is None
+                        ), f"Prefix error:{code}->{current.right.label} & {y}"
+                        self.replace(current.right, Node())
+                    current = current.right
+
+                # if c_i=0, we go down to the left child
+                if code[i] == 0:
+                    if isinstance(current.left, Leaf):
+                        assert (
+                            current.left.label is None
+                        ), f"Prefix error:{code}->{current.right.label} & {y}"
+                        self.replace(current.left, Node())
+                    current = current.left
+
+                # if c_i=-1, we are at the position of the leaf
+                if code[i] == -1:
+                    break
+            self.replace(current, y2leaf[y])
+        return y2leaf
