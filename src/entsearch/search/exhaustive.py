@@ -10,7 +10,7 @@ def get_nb_queries(y_cat, codes):
     y_cat : numpy.ndarray of int
         Sequence of observations.
     codes: numpy.ndarray of int
-        Codes of each symbol.
+        Fixed codes of each symbol.
 
     Returns
     -------
@@ -22,6 +22,31 @@ def get_nb_queries(y_cat, codes):
     y_one_hot = np.zeros((n, m))
     y_one_hot[np.arange(n), y_cat] = 1
     nb_queries = (y_one_hot @ codes != -1).sum(axis=1)
+    return nb_queries
+
+
+def get_nb_queries_adaptive(y_cat, tree):
+    """
+    Perform adpative tree search
+
+    Parameters
+    ----------
+    y_cat : numpy.ndarray of int
+        Sequence of observations.
+    tree: HuffmanTree object
+        Tree to perform the search adpatively.
+
+    Returns
+    -------
+    nb_queries : numpy.ndarray
+        Number of queries make to identify each y.
+    """
+    n = len(y_cat)
+    nb_queries = np.zeros(n, dtype=int)
+    for i in range(n):
+        y = y_cat[i]
+        nb_queries[i] = tree.y2leaf[y].depth
+        tree.report_observation(y)
     return nb_queries
 
 
