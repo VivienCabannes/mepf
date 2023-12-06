@@ -19,7 +19,7 @@ class SearchTree(Tree):
     codes: list of list of int
         List of all leaf codes according to their position in the tree.
     """
-    def __init__(self, codes):
+    def __init__(self, counts):
         """
         Initialize the search tree.
 
@@ -28,9 +28,15 @@ class SearchTree(Tree):
         codes : list of list of int
             The codes of each class to initialize the tree.
         """
-        self.y2leaf = self.init_from_codes(codes)
-        self.codes = codes
-        self.root.get_set()
+        # initialize the leaves
+        self.m = len(counts)
+        nodes = [Leaf(value=counts[i], label=i) for i in range(self.m)]
+        self.y2leaf = {i: nodes[i] for i in range(self.m)}
+
+        # build the Huffman tree from counts
+        root = self.huffman_build(nodes, return_list=False)
+        Tree.__init__(self, root)
+        self.codes = self.get_codes()
 
     @staticmethod
     def report_count(node, y_codes):
@@ -46,9 +52,9 @@ class SearchTree(Tree):
         """
         assert node.value != 0, "Node has no observation reported"
 
+        # get child dispenser
         pos_ind = y_codes[node.ind, node.depth] == 1
 
-        # print(node)
         node.right.ind = node.ind.copy()
         node.right.ind[node.ind] = pos_ind
         node.right.value = np.sum(pos_ind)
@@ -57,7 +63,7 @@ class SearchTree(Tree):
         node.left.ind[node.ind] = ~pos_ind
         node.left.value = node.value - node.right.value
 
-    def find_admissible_partition(self, y_cat, epsilon=0, rng=np.random.default_rng()):
+    def find_admissible_partition(self, y_cat, epsilon=0):
         """
         Number of queries need to find the empirical mode in a sequence
 
@@ -68,8 +74,6 @@ class SearchTree(Tree):
         epsilon: float, optional
             Stopping criterion for the difference in probability between the
             empirical mode and the sets in the found partition
-        rng: numpy.random.Generator, optional
-            Random number generator to break ties in comparision
 
         Returns
         -------
@@ -81,7 +85,6 @@ class SearchTree(Tree):
         This function sets tree nodes values to number of observation
         """
         y_codes = self.codes[y_cat]
-        m = len(self.codes)
         n = len(y_codes)
         self.root.ind = np.ones(n, dtype=bool)
         self.root.value = n
@@ -108,17 +111,15 @@ class SearchTree(Tree):
                 continue
             # make n_node queries to get children information
             self.report_count(node, y_codes)
-            # add noise to break ties arbitrarily in heap
-            noise = rng.random(size=2) / ((2 * m)) ** 2
             # push children in the heap
-            heapq.heappush(heap, (-node.left.value + noise[0], node.left))
-            heapq.heappush(heap, (-node.right.value + noise[1], node.right))
+            heapq.heappush(heap, (-node.left.value, node.left))
+            heapq.heappush(heap, (-node.right.value, node.right))
         while len(heap) > 0:
             _, node = heapq.heappop(heap)
             partition.append(node)
         return partition
 
-    def process_batch(self, y_cat, epsilon=0, adapt=True, rng=np.random.default_rng()):
+    def process_batch(self, y_cat, epsilon=0, adapt=True):
         """
         Process a batch of observations to update the tree
 
@@ -131,8 +132,6 @@ class SearchTree(Tree):
             empirical mode and the sets in the found partition
         adapt: bool, optional
             Whether to adapt the tree to the partition found
-        rng: numpy.random.Generator, optional
-            Random number generator to break ties in comparision
 
         Returns
         -------
@@ -150,8 +149,8 @@ class SearchTree(Tree):
             nb_queries += node.value * node.depth
         return nb_queries
 
-    def get_nb_queries(self, y_cat, rng=np.random.default_rng()):
-        return self.process_batch(y_cat, epsilon=0, adapt=False, rng=rng)
+    def get_nb_queries(self, y_cat):
+        return self.process_batch(y_cat, epsilon=0, adapt=False)
 
     def get_nb_queries_sequential(self, y_cat):
         """

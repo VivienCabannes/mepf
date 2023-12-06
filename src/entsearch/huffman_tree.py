@@ -1,7 +1,6 @@
 """
 Huffman tree
 """
-import numpy as np
 from .tree_constructors import Tree, Leaf
 
 
@@ -19,7 +18,7 @@ class HuffmanTree(Tree):
         List of all nodes in the order they were merged in the Huffman tree.
     """
 
-    def __init__(self, counts, rng=np.random.default_rng()):
+    def __init__(self, counts):
         """
         Initialize the Huffman tree with integer counts.
 
@@ -27,9 +26,6 @@ class HuffmanTree(Tree):
         ----------
         counts : list of int
             The counts of each class to initialize the tree.
-        rng : numpy.random.Generator, optional
-            The random number generator to use. The default is
-            numpy.random.default_rng().
         """
         # add fake observations to get a balanced tree without observations
         m = len(counts)
@@ -42,7 +38,7 @@ class HuffmanTree(Tree):
         self.y2leaf = {i: nodes[i] for i in range(m)}
 
         # build the Huffman tree
-        root, self.huffman_list = self.huffman_build(nodes, return_list=True, rng=rng)
+        root, self.huffman_list = self.huffman_build(nodes, return_list=True)
         Tree.__init__(self, root)
 
     def report_observation(self, y):
@@ -107,7 +103,7 @@ class HuffmanTree(Tree):
             # swap them in the tree and in the sorted list
             self.huffman_list[i_node] = swapped
             self.huffman_list[i_swap] = node
-            self.swap(node, swapped)
+            self.swap(node, swapped, update_depth=True)
 
         # update the node value and iter over its parents
         node.value += 1
