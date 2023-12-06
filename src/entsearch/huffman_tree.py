@@ -1,9 +1,8 @@
 """
 Huffman tree
 """
-import heapq
 import numpy as np
-from .tree_constructors import Tree, Node, Leaf
+from .tree_constructors import Tree, Leaf
 
 
 class HuffmanTree(Tree):
@@ -32,29 +31,19 @@ class HuffmanTree(Tree):
             The random number generator to use. The default is
             numpy.random.default_rng().
         """
-        # preprocess the counts before the Huffman tree construction
+        # add fake observations to get a balanced tree without observations
         m = len(counts)
-        values = np.array([float(counts[i]) for i in range(m)])
-        #    add fake observations to get a balanced tree without observations
-        self.fake_addition = values == 0
-        values[self.fake_addition] += 1
-        #    add randomness to break ties in heap
-        values += rng.random(size=m) / ((2 * m)) ** 2
+        self.fake_addition = [counts[i] == 0 for i in range(m)]
 
         # initialize the leaves
-        self.y2leaf = {i: Leaf(int(values[i]), label=i) for i in range(m)}
+        nodes = [
+            Leaf(counts[i] + int(self.fake_addition[i]), label=i) for i in range(m)
+        ]
+        self.y2leaf = {i: nodes[i] for i in range(m)}
 
-        # use heap to build the Huffman tree
-        heap = [(values[i], self.y2leaf[i]) for i in range(m)]
-        heapq.heapify(heap)
-        self.huffman_list = []
-        while len(heap) > 1:
-            left, right = heapq.heappop(heap), heapq.heappop(heap)
-            self.huffman_list.append(left[1])
-            self.huffman_list.append(right[1])
-            node = Node(left[1], right[1])
-            heapq.heappush(heap, (left[0] + right[0], node))
-        Tree.__init__(self, node)
+        # build the Huffman tree
+        root, self.huffman_list = self.huffman_build(nodes, return_list=True, rng=rng)
+        Tree.__init__(self, root)
 
     def report_observation(self, y):
         """
@@ -74,6 +63,8 @@ class HuffmanTree(Tree):
     def _update(self, node, _i_min=0):
         """
         Report observation of the node, and update Huffman tree
+
+        This method assimilates to dynamic Huffman coding (FGK algorithm)
 
         Parameters
         ----------
@@ -121,6 +112,26 @@ class HuffmanTree(Tree):
         # update the node value and iter over its parents
         node.value += 1
         self._update(node.parent, i_swap)
+
+    def get_nb_queries(self, y_cat):
+        """
+        Get the number of queries made to identify the empirical mode
+
+        Parameters
+        ----------
+        y_cat : list of int
+            Sequence of observations
+
+        Returns
+        -------
+        nb_queries : int
+            Number of queries make to identify the empirical mode
+        """
+        nb_queries = 0
+        for y in y_cat:
+            nb_queries += self.y2leaf[y].depth
+            self.report_observation(y)
+        return nb_queries
 
     def __repr__(self):
         return f"HuffmanTree at {id(self)}"

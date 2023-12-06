@@ -3,7 +3,7 @@ Search Tree
 """
 import heapq
 import numpy as np
-from .tree_constructors import Tree, Node, Leaf
+from .tree_constructors import Tree, Leaf
 
 
 class SearchTree(Tree):
@@ -13,7 +13,7 @@ class SearchTree(Tree):
     Attributes
     ----------
     root: Node
-        The root of the Search tree.
+        The root of the search tree.
     y2leaf: dict of int: Leaf
         Dictionary mapping each class to its corresponding leaf.
     codes: list of list of int
@@ -22,47 +22,16 @@ class SearchTree(Tree):
 
     def __init__(self, codes):
         """
-        Initialize the Search tree with integer codes.
+        Initialize the search tree.
 
         Parameters
         ----------
         codes : list of list of int
             The codes of each class to initialize the tree.
         """
-        Tree.__init__(self, Node())
+        self.y2leaf = self.init_from_codes(codes)
         self.codes = codes
-        self.y2leaf = {}
-
-        # to build the search tree, iterate over the classess
-        for y in range(len(codes)):
-            code = codes[y]
-            self.y2leaf[y] = Leaf(0, y)
-            current = self.root
-            # iterate over the class code
-            for i in range(len(code)):
-
-                # if c_i=1, we go down to the right child
-                if code[i] == 1:
-                    if isinstance(current.right, Leaf):
-                        assert (
-                            current.right.label is None
-                        ), f"Prefix error:{code}->{current.right.label} & {y}"
-                        self.replace(current.right, Node())
-                    current = current.right
-
-                # if c_i=0, we go down to the left child
-                if code[i] == 0:
-                    if isinstance(current.left, Leaf):
-                        assert (
-                            current.left.label is None
-                        ), f"Prefix error:{code}->{current.right.label} & {y}"
-                        self.replace(current.left, Node())
-                    current = current.left
-
-                # if c_i=-1, the current node should be the leaf
-                if code[i] == -1:
-                    break
-            self.replace(current, self.y2leaf[y])
+        self.root.get_set()
 
     @staticmethod
     def report_count(node, y_codes):
@@ -149,6 +118,67 @@ class SearchTree(Tree):
             _, node = heapq.heappop(heap)
             partition.append(node)
         return partition
+
+    @staticmethod
+    def get_nb_queries_partition(partition):
+        """
+        Get the number of queries made to build the partition
+
+        Parameters
+        ----------
+        partition: list of Node
+            List of nodes in the partition
+
+        Returns
+        -------
+        nb_queries: int
+            Number of queries to identify the partition
+        """
+        nb_queries = 0
+        for node in partition:
+            nb_queries += node.value * node.depth
+        return nb_queries
+
+    def get_nb_queries(self, y_cat):
+        """
+        Get the number of queries made to identify the empirical mode
+        with batch search
+
+        Parameters
+        ----------
+        y_cat: list of int
+            Sequential samples of the categorical variable
+
+        Returns
+        -------
+        nb_queries: int
+            Number of queries to identify the empirical mode
+        """
+        self.reset_value()
+        partition = self.find_admissible_partition(y_cat)
+        return self.get_nb_queries_partition(partition)
+
+    def get_nb_queries_sequential(self, y_cat):
+        """
+        Get the number of queries made to identify the empirical mode
+        with sequential search
+
+        Parameters
+        ----------
+        y_cat: list of int
+            Sequential samples of the categorical variable
+
+        Returns
+        -------
+        nb_queries: int
+            Number of queries to identify the empirical mode
+        """
+        n = len(y_cat)
+        m = len(self.codes)
+        y_one_hot = np.zeros((n, m))
+        y_one_hot[np.arange(n), y_cat] = 1
+        nb_queries = (y_one_hot @ self.codes != -1).sum()
+        return nb_queries
 
     def __repr__(self):
         return f"SearchTree at {id(self)}"
