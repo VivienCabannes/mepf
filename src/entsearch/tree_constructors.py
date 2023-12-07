@@ -120,16 +120,15 @@ class Node(AllNode):
             left_length -= 8
         if isinstance(self.right, Leaf):
             right_length -= 8
-        current = " " * (left_length - length)
         if self.value is None:
-            current += "Node: None" + " " * (2 * length - 7)
+            current = " " * (left_length - 4)
+            current += "Node: None"
+            current += " " * (right_length - 3)
         else:
-            current += "Node: " + format(self.value, str(2 * length - 3) + "d")
-        current += " " * (right_length - length)
-        if _call:
-            out_print = current + "\n"
-        else:
-            out_print = [current]
+            current = " " * (left_length - 2 - length // 2)
+            current += "Node: " + format(self.value, str(length) + "d")
+            current += " " * (right_length - 1 - length // 2 - length % 2)
+        out_print = [current]
         for i in range(max(left_depth, right_depth)):
             if i < left_depth:
                 current = left_print[i]
@@ -140,10 +139,7 @@ class Node(AllNode):
                 current += right_print[i]
             else:
                 current += " " * right_length
-            if _call:
-                out_print += current + "\n"
-            else:
-                out_print.append(current)
+            out_print.append(current)
         return out_print
 
 
@@ -179,8 +175,10 @@ class Tree:
         return f"HuffmanTree with root at {id(self.root)}"
 
     def __str__(self):
-        length = max(len(str(self.root.value)) // 2 + 1, 3)
-        return self.root._get_print(length=length)
+        out = ""
+        for i in self.root._get_print(length=len(str(self.root.value))):
+            out += i + "\n"
+        return out
 
     def replace_root(self, new_root):
         root = self.root
