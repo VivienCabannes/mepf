@@ -32,14 +32,16 @@ class HuffmanTree(Tree):
         self.fake_addition = [counts[i] == 0 for i in range(m)]
 
         # initialize the leaves
-        nodes = [
-            Leaf(counts[i] + int(self.fake_addition[i]), label=i) for i in range(m)
-        ]
+        nodes = [Leaf(counts[i] + int(self.fake_addition[i]), label=i) for i in range(m)]
         self.y2leaf = {i: nodes[i] for i in range(m)}
 
         # build the Huffman tree
         root, self.huffman_list = self.huffman_build(nodes, return_list=True)
         Tree.__init__(self, root)
+
+        # remember Huffman position
+        for i, node in enumerate(self.huffman_list):
+            node._i_huff = i
 
     def report_observation(self, y):
         """
@@ -57,7 +59,7 @@ class HuffmanTree(Tree):
         self.y2leaf[y].value += 1
         self._update(self.y2leaf[y])
 
-    def _update(self, node, _i_min=0):
+    def _update(self, node):
         """
         Update Huffman tree due to recent observation
 
@@ -81,12 +83,7 @@ class HuffmanTree(Tree):
             return
 
         # get the node
-        i_node = _i_min
-        while i_node < len(self.huffman_list):
-            if self.huffman_list[i_node] == node:
-                break
-            i_node += 1
-        assert i_node + 1 < len(self.huffman_list)
+        i_node = node._i_huff
 
         # find where to swap it in the list
         i_swap = i_node + 1
@@ -97,14 +94,16 @@ class HuffmanTree(Tree):
 
         if i_swap != i_node:
             swapped = self.huffman_list[i_swap]
-            # swap them in the tree and in the sorted list
-            self.huffman_list[i_node] = swapped
-            self.huffman_list[i_swap] = node
             self.swap(node, swapped, update_depth=True)
+            # swap them in the sorted list too
+            self.huffman_list[i_node] = swapped
+            swapped._i_huff = i_node
+            self.huffman_list[i_swap] = node
+            node._i_huff = i_swap
 
         # update the parent value and iter over its parents
         node.parent.value += 1
-        self._update(node.parent, i_swap)
+        self._update(node.parent)
 
     def get_nb_queries(self, y_cat):
         """
