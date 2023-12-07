@@ -27,7 +27,7 @@ class AllNode:
             return False
         if other.value is None:
             return True
-        return self.value <= other.value
+        return self.value < other.value
 
 
 class Leaf(AllNode):

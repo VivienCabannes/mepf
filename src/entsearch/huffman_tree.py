@@ -54,11 +54,12 @@ class HuffmanTree(Tree):
         if self.fake_addition[y]:
             self.fake_addition[y] = False
             return
+        self.y2leaf[y].value += 1
         self._update(self.y2leaf[y])
 
     def _update(self, node, _i_min=0):
         """
-        Report observation of the node, and update Huffman tree
+        Update Huffman tree due to recent observation
 
         This method assimilates to dynamic Huffman coding (FGK algorithm)
 
@@ -74,9 +75,9 @@ class HuffmanTree(Tree):
         The update algorithm makes use of the huffman_list,
         which sorts nodes by value, in the order used to build the Huffman tree
         """
-        # if we are at the root node, we stop
-        if node.parent is None:
-            node.value += 1
+        # if parent is the root node, we stop
+        if node.parent.parent is None:
+            node.parent.value += 1
             return
 
         # get the node
@@ -85,15 +86,11 @@ class HuffmanTree(Tree):
             if self.huffman_list[i_node] == node:
                 break
             i_node += 1
-        assert i_node < len(
-            self.huffman_list
-        ), f"{node} not found in list after {_i_min}."
+        assert i_node + 1 < len(self.huffman_list)
 
         # find where to swap it in the list
         i_swap = i_node + 1
-        while i_swap < len(self.huffman_list):
-            if self.huffman_list[i_swap].value != node.value:
-                break
+        while self.huffman_list[i_swap] < node:
             i_swap += 1
         # deduce the node to swap with
         i_swap -= 1
@@ -105,8 +102,8 @@ class HuffmanTree(Tree):
             self.huffman_list[i_swap] = node
             self.swap(node, swapped, update_depth=True)
 
-        # update the node value and iter over its parents
-        node.value += 1
+        # update the parent value and iter over its parents
+        node.parent.value += 1
         self._update(node.parent, i_swap)
 
     def get_nb_queries(self, y_cat):
