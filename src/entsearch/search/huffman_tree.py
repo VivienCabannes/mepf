@@ -78,7 +78,7 @@ class HuffmanTree(Tree):
             node.value += 1
             return
 
-        # get the node and swap it with max in its block
+        # get the node and swap it with max equals elements
         i_node = node._i_huff
         i_swap = i_node
         while not node < self.huffman_list[i_swap + 1]:
@@ -91,7 +91,7 @@ class HuffmanTree(Tree):
         value = node.value
         node.value += 1
 
-        # keep the huffman order
+        # keep the huffman order by swapping the node again
         i_swap = i_node
         while self.huffman_list[i_swap + 1] < node:
             i_swap += 1
@@ -107,12 +107,15 @@ class HuffmanTree(Tree):
     def _swap(self, i_node, i_swap):
         node = self.huffman_list[i_node]
         swapped = self.huffman_list[i_swap]
-        self.swap(node, swapped, update_depth=True)
-        # keep the list and its pointers up to date
+
+        # update list and pointers
         self.huffman_list[i_node] = swapped
         swapped._i_huff = i_node
         self.huffman_list[i_swap] = node
         node._i_huff = i_swap
+
+        # swap in the tree
+        self.swap(node, swapped)
 
     def get_nb_queries(self, y_cat):
         """

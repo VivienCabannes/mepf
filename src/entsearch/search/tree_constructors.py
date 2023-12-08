@@ -1,16 +1,17 @@
 """
 Tree Constructors
 """
+from __future__ import annotations
 import heapq
+from typing import List
 
 import numpy as np
 
 
-class AllNode:
+class Vertex:
     def __init__(self):
-        self.parent = None
-        self.value = None
-        pass
+        self.parent: Vertex = None
+        self.depth: int = None
 
     def delete_parent(self):
         parent = self.parent
@@ -22,7 +23,7 @@ class AllNode:
         self.parent = None
         del parent
 
-    def __lt__(self, other):
+    def __lt__(self, other: Vertex):
         # None value is seen a +inf
         if self.value is None:
             return False
@@ -37,12 +38,11 @@ class AllNode:
         return True
 
 
-class Leaf(AllNode):
+class Leaf(Vertex):
     def __init__(self, value: int = None, label: int = None):
+        Vertex.__init__(self)
         self.value = value
         self.label = label
-        self.parent = None
-        self.depth = None
 
     def compute_value(self):
         return
@@ -50,7 +50,7 @@ class Leaf(AllNode):
     def reset_value(self):
         self.value = None
 
-    def update_depth(self, depth):
+    def update_depth(self, depth: int):
         self.depth = depth
 
     def get_max_depth(self):
@@ -59,7 +59,7 @@ class Leaf(AllNode):
     def get_nb_leaves(self):
         return 1
 
-    def fill_codes(self, prefix, codes):
+    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
         codes[self.label] = prefix
 
     def __repr__(self):
@@ -73,21 +73,19 @@ class Leaf(AllNode):
         return [f"\033[1mLeaf {self.label}: {self.value:d}\033[0m"]
 
 
-class Node(AllNode):
-    def __init__(self, left: Leaf = None, right: Leaf = None):
+class Node(Vertex):
+    def __init__(self, left: Vertex = None, right: Vertex = None):
+        Vertex.__init__(self)
         if left is None:
             assert right is None, "Cannot have only one child"
             self.left = Leaf()
             self.right = Leaf()
-            self.value = None
         else:
             self.left = left
             self.right = right
             self.left.parent = self
             self.right.parent = self
-            self.value = self.left.value + self.right.value
-        self.parent = None
-        self.depth = None
+        self.compute_value()
 
     def compute_value(self):
         if self.left.value is None:
@@ -102,7 +100,7 @@ class Node(AllNode):
         self.left.reset_value()
         self.right.reset_value()
 
-    def update_depth(self, depth):
+    def update_depth(self, depth: int):
         self.depth = depth
         self.left.update_depth(depth + 1)
         self.right.update_depth(depth + 1)
@@ -113,7 +111,7 @@ class Node(AllNode):
     def get_nb_leaves(self):
         return self.left.get_nb_leaves() + self.right.get_nb_leaves()
 
-    def fill_codes(self, prefix, codes):
+    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
         """
         Parameters
         ----------
@@ -130,7 +128,15 @@ class Node(AllNode):
         self.left.fill_codes(left_prefix, codes)
 
     def __repr__(self):
+        if self.value is None:
+            return f"Node(None) at {id(self)}"
         return f"Node({self.value:3d}) at {id(self)}"
+
+    def __str__(self):
+        out = ""
+        for i in self._get_print(length=len(str(self.value))):
+            out += i + "\n"
+        return out
 
     def _get_print(self, _call=True, length=3):
         left_print = self.left._get_print(_call=False, length=length)
@@ -196,19 +202,16 @@ class Tree:
         return f"HuffmanTree with root at {id(self.root)}"
 
     def __str__(self):
-        out = ""
-        for i in self.root._get_print(length=len(str(self.root.value))):
-            out += i + "\n"
-        return out
+        return self.root.__str__()
 
-    def replace_root(self, new_root):
+    def replace_root(self, new_root: Node):
         root = self.root
         self.root = new_root
         self.root.update_depth(0)
         del root
 
     @staticmethod
-    def swap(node1, node2, update_depth=False):
+    def swap(node1: Vertex, node2: Vertex):
         """
         Swapping two nodes in the tree
 
@@ -218,12 +221,10 @@ class Tree:
             First node to swap
         node2: Node
             Second node to swap
-        update_depth: bool, optional
-            Whether to update the depth of the nodes after swapping
 
         Notes
         -----
-        Useful for SearchTree
+        Useful for HuffmanTree
         """
         if node1.parent == node2.parent:
             parent = node1.parent
@@ -235,20 +236,43 @@ class Tree:
                 node1.parent.left = node2
             elif node1.parent.right == node1:
                 node1.parent.right = node2
-            if node2.parent is not None:
-                if node2.parent.left == node2:
-                    node2.parent.left = node1
-                elif node2.parent.right == node2:
-                    node2.parent.right = node1
+            if node2.parent.left == node2:
+                node2.parent.left = node1
+            elif node2.parent.right == node2:
+                node2.parent.right = node1
             node1.parent, node2.parent = node2.parent, node1.parent
 
-        if update_depth:
+            # update depth
             depth1, depth2 = node1.depth, node2.depth
             node1.update_depth(depth2)
             node2.update_depth(depth1)
 
     @staticmethod
-    def huffman_build(nodes):
+    def replace(node: Vertex, new: Vertex):
+        """
+        Replacing node by a new vertex
+
+        Parameters
+        ----------
+        node: Vertex
+            Vertex to delete
+        new: Vertex
+            New node
+
+        Notes
+        -----
+        Useful for HeuristicTree
+        """
+        if node.parent.left == node:
+            node.parent.left = new
+        elif node.parent.right == node:
+            node.parent.right = new
+        new.parent = node.parent
+        new.update_depth(node.depth)
+        del node
+
+    @staticmethod
+    def huffman_build(nodes: List[Vertex]):
         """
         Build Huffman tree on top of nodes (seen as leaves)
 
