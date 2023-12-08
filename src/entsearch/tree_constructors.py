@@ -23,11 +23,18 @@ class AllNode:
         del parent
 
     def __lt__(self, other):
+        # None value is seen a +inf
         if self.value is None:
             return False
         if other.value is None:
             return True
-        return self.value < other.value
+        if self.value < other.value:
+            return True
+        if self.value > other.value:
+            return False
+        if (type(self) is type(other)) or isinstance(self, Node):
+            return False
+        return True
 
 
 class Leaf(AllNode):
@@ -45,6 +52,9 @@ class Leaf(AllNode):
 
     def get_max_depth(self):
         return self.depth
+
+    def get_nb_leaves(self):
+        return 1
 
     def fill_codes(self, prefix, codes):
         codes[self.label] = prefix
@@ -204,15 +214,21 @@ class Tree:
         -----
         Useful for SearchTree
         """
-        if node1.parent.left == node1:
-            node1.parent.left = node2
-        elif node1.parent.right == node1:
-            node1.parent.right = node2
-        if node2.parent.left == node2:
-            node2.parent.left = node1
-        elif node2.parent.right == node2:
-            node2.parent.right = node1
-        node1.parent, node2.parent = node2.parent, node1.parent
+        if node1.parent == node2.parent:
+            parent = node1.parent
+            right, left = parent.right, parent.left
+            parent.left = right
+            parent.right = left
+        else:
+            if node1.parent.left == node1:
+                node1.parent.left = node2
+            elif node1.parent.right == node1:
+                node1.parent.right = node2
+            if node2.parent.left == node2:
+                node2.parent.left = node1
+            elif node2.parent.right == node2:
+                node2.parent.right = node1
+            node1.parent, node2.parent = node2.parent, node1.parent
 
         if update_depth:
             depth1, depth2 = node1.depth, node2.depth
@@ -220,7 +236,7 @@ class Tree:
             node2.update_depth(depth1)
 
     @staticmethod
-    def huffman_build(nodes, return_list=False):
+    def huffman_build(nodes):
         """
         Build Huffman tree on top of nodes (seen as leaves)
 
@@ -228,29 +244,61 @@ class Tree:
         ----------
         node_list : list of Nodes
             The nodes to use as based leaves for the sup-tree.
-        return_list : bool, optional
-            Whether to return the Huffman list of nodes
 
         Returns
         -------
         node: Node
             Root of the Huffman tree
-        huffman_list: list, if `return_list`
-            List of nodes in the order they were merged in the Huffman tree
         """
-        # randomness to break ties in heap
-        m = len(nodes)
-
-        # use heap to build the Huffman tree
-        heap = [nodes[i] for i in range(m)]
+        heap = [node for node in nodes]
         heapq.heapify(heap)
-        huffman_list = []
         while len(heap) > 1:
             left, right = heapq.heappop(heap), heapq.heappop(heap)
-            huffman_list.append(left)
-            huffman_list.append(right)
-            node = Node(left, right)
-            heapq.heappush(heap, node)
-        if return_list:
-            return node, huffman_list
-        return node
+            heapq.heappush(heap, Node(left, right))
+        return heap[0]
+
+    def get_huffman_list(self):
+        """
+        Get the list of nodes in the order used to build the Huffman tree
+
+        Returns
+        -------
+        huffman_list : list of Nodes
+            The list of nodes in the order used to build the Huffman tree
+
+        Notes
+        -----
+        We do not do it during the `huffman_build` method due to inconsistent
+        ties breaking in the heap
+        """
+        codes = self.get_codes()
+
+        # order codes by depth
+        depth = codes.shape[1] + 1
+        codes_per_depth = {i: set({}) for i in range(depth + 1)}
+        for code in codes:
+            current = ''
+            for char in code:
+                if char == -1:
+                    break
+                current += str(char)
+                codes_per_depth[len(current)].add(current)
+
+        # sort codes from left to right
+        sorted_nodes = []
+        for i in range(depth + 1):
+            sorted_nodes = sorted(codes_per_depth[i]) + sorted_nodes
+
+        # deduce huffman list
+        huffman_list = []
+        for code in sorted_nodes:
+            node = self.root
+            for char in code:
+                if char == '0':
+                    node = node.left
+                else:
+                    node = node.right
+            huffman_list.append(node)
+        huffman_list.append(self.root)
+
+        return huffman_list

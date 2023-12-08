@@ -34,7 +34,7 @@ class SearchTree(Tree):
         self.y2leaf = {i: nodes[i] for i in range(self.m)}
 
         # build the Huffman tree from counts
-        root = self.huffman_build(nodes, return_list=False)
+        root = self.huffman_build(nodes)
         Tree.__init__(self, root)
         self.codes = self.get_codes()
 
