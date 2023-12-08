@@ -44,6 +44,9 @@ class Leaf(AllNode):
         self.parent = None
         self.depth = None
 
+    def compute_value(self):
+        return
+
     def reset_value(self):
         self.value = None
 
@@ -85,6 +88,14 @@ class Node(AllNode):
             self.value = self.left.value + self.right.value
         self.parent = None
         self.depth = None
+
+    def compute_value(self):
+        if self.left.value is None:
+            self.value = None
+        elif self.right.value is None:
+            self.value = None
+        else:
+            self.value = self.left.value + self.right.value
 
     def reset_value(self):
         self.value = None
@@ -224,10 +235,11 @@ class Tree:
                 node1.parent.left = node2
             elif node1.parent.right == node1:
                 node1.parent.right = node2
-            if node2.parent.left == node2:
-                node2.parent.left = node1
-            elif node2.parent.right == node2:
-                node2.parent.right = node1
+            if node2.parent is not None:
+                if node2.parent.left == node2:
+                    node2.parent.left = node1
+                elif node2.parent.right == node2:
+                    node2.parent.right = node1
             node1.parent, node2.parent = node2.parent, node1.parent
 
         if update_depth:
