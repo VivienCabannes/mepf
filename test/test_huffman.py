@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from entsearch import huffman_codes, HuffmanTree
+from entsearch.search import HuffmanTree
 from entsearch.data import sample_dirichlet
 
 rng = np.random.default_rng(seed=1000)
@@ -10,8 +10,8 @@ m = 10
 alpha = np.ones(m)
 proba = sample_dirichlet(alpha, generator=rng)
 
-codes = huffman_codes(proba)
-dichotomic_codes = huffman_codes([1 for _ in range(m)])
+codes = HuffmanTree(proba).get_codes()
+dichotomic_codes = HuffmanTree([1 for _ in range(m)]).get_codes()
 
 n = 1000
 y_cat = rng.choice(m, size=n, p=proba)
@@ -21,7 +21,7 @@ y_one_hot[np.arange(n), y_cat] = 1
 nb_queries_huffman = (y_one_hot @ codes != -1).sum(axis=1)
 nb_queries_dichotomic = (y_one_hot @ dichotomic_codes != -1).sum(axis=1)
 
-assert nb_queries_dichotomic.sum() == 3641
+assert nb_queries_dichotomic.sum() == 3469
 assert nb_queries_huffman.sum() == 3085
 
 model = HuffmanTree([0 for _ in range(m)])

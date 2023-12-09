@@ -138,12 +138,11 @@ class SearchTree(Tree):
         nb_queries: int
             Number of queries to identify the partition
         """
-        m = len(self.codes)
         partition = self.find_admissible_partition(y_cat, epsilon=epsilon)
         if adapt:
-            root = self.huffman_build(partition, return_list=False)
+            root = self.huffman_build(partition)
             self.replace_root(root)
-            self.get_codes(m)
+            self.codes = self.get_codes()
         nb_queries = 0
         for node in partition:
             nb_queries += node.value * node.depth

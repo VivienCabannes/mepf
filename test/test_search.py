@@ -1,6 +1,6 @@
 import numpy as np
 
-from entsearch import SearchTree
+from entsearch.search import SearchTree
 from entsearch.data import sample_dirichlet
 
 rng = np.random.default_rng(seed=0)
@@ -15,11 +15,11 @@ y_one_hot = np.eye(m)[y_cat]
 freqs = y_one_hot.sum(axis=0)
 
 model = SearchTree([1 for _ in range(m)])
+model_bis = SearchTree([1 for _ in range(m)])
 
 for i in range(50):
     model.reset_value()
     y_cat = rng.choice(m, size=n, p=proba)
-    # observations = np.ones((n, m), dtype=bool)
 
     partition = model.find_admissible_partition(y_cat, epsilon=0)
 
@@ -46,6 +46,11 @@ for i in range(50):
     model.replace_root(node)
     model.codes = model.get_codes()
 
+    model_bis.reset_value()
+    model_bis.process_batch(y_cat, epsilon=0, adapt=True)
+
+
 out_str = '        Node: 100000                                                                                                                                \n\x1b[1mLeaf 0: 42826\x1b[0m |                                                     Node:  57174                                                                    \n              |                       Node:  21675                        |                                                     Node:  35499        \n              |         Node: None          |         Node: None          |                        Node: None                         | \x1b[1mLeaf 1: None\x1b[0m\n              | \x1b[1mLeaf 4: None\x1b[0m | \x1b[1mLeaf 8: None\x1b[0m | \x1b[1mLeaf 6: None\x1b[0m | \x1b[1mLeaf 2: None\x1b[0m |         Node: None          |         Node: None          |             \n              |                                                           | \x1b[1mLeaf 7: None\x1b[0m | \x1b[1mLeaf 9: None\x1b[0m | \x1b[1mLeaf 3: None\x1b[0m | \x1b[1mLeaf 5: None\x1b[0m |             \n'
 
 assert model.__str__() == out_str
+assert model_bis.__str__() == out_str
