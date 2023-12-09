@@ -19,14 +19,15 @@ class SearchTree(Tree):
     codes: list of list of int
         List of all leaf codes according to their position in the tree.
     """
+
     def __init__(self, counts):
         """
         Initialize the search tree.
 
         Parameters
         ----------
-        codes : list of list of int
-            The codes of each class to initialize the tree.
+        codes : list of list of int or float
+            Counts of each class to initialize the tree.
         """
         # initialize the leaves
         self.m = len(counts)

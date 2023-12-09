@@ -286,7 +286,7 @@ class Tree:
         node: Node
             Root of the Huffman tree
         """
-        heap = [node for node in nodes]
+        heap = nodes.copy()
         heapq.heapify(heap)
         while len(heap) > 1:
             left, right = heapq.heappop(heap), heapq.heappop(heap)

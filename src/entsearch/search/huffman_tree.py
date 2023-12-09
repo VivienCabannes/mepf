@@ -20,23 +20,23 @@ class HuffmanTree(Tree):
 
     def __init__(self, counts):
         """
-        Initialize the Huffman tree with integer counts.
+        Initialize the Huffman tree.
 
         Parameters
         ----------
-        counts : list of int
-            The counts of each class to initialize the tree.
+        counts : list of int or float
+            Counts of each class to initialize the tree.
         """
         # add fake observations to get a balanced tree without observations
-        m = len(counts)
-        self.fake_addition = [counts[i] == 0 for i in range(m)]
+        self.m = len(counts)
+        self.fake_addition = [counts[i] == 0 for i in range(self.m)]
 
         # initialize the leaves
         nodes = []
-        for i in range(m):
+        for i in range(self.m):
             leaf = Leaf(value=counts[i] + int(self.fake_addition[i]), label=i)
             nodes.append(leaf)
-        self.y2leaf = {i: nodes[i] for i in range(m)}
+        self.y2leaf = {i: nodes[i] for i in range(self.m)}
 
         # build the Huffman tree
         root = self.huffman_build(nodes)
