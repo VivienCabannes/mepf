@@ -43,6 +43,8 @@ class SearchTree(Tree):
             Maximal number of potential class
         comeback:
             Wether to remember past information for future re-query
+        batch:
+            Wether we will find empirical mode in a batch
         """
         self.m = m
 
@@ -130,8 +132,36 @@ class SearchTree(Tree):
 
         self._partition_rebalancing(epsilon)
 
-    def batch_identification(self, y_cat: List[int]):
-        pass
+    def batch_identification(
+        self, y_cat: List[int], epsilon: float = 0, update: bool = True
+    ):
+        """
+        Find the emprical mode in a batch
+
+        Parameters
+        ----------
+        y_cat:
+            Batch observation
+        update:
+            Wether to update the tree accordingly
+        epsilon:
+            Criterion on the biggest `p(S)` compared to `max p(y)`,
+            for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
+        """
+        codes = self.get_codes()
+        self.root.value = len(y_cat)
+        setattr(self, "y_codes", codes[y_cat])
+        self._refine_partition(epsilon)
+        delattr(self, "y_codes")
+
+        if update:
+            root = self.huffman_build(self.partition)
+            self.replace_root(root)
+
+            # remember Huffman position
+            self.huffman_list = self.get_huffman_list()
+            for i, node in enumerate(self.huffman_list):
+                node._i_huff = i
 
     def _partition_rebalancing(self, epsilon: float):
         """
@@ -158,7 +188,7 @@ class SearchTree(Tree):
 
     def _splitting(self, epsilon: float):
         codes = self.get_codes()
-        setattr(self, "y_codes", codes[self.y_cat[: self.root.value]])
+        setattr(self, "y_codes", codes[self.y_cat[:self.root.value]])
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
@@ -171,13 +201,6 @@ class SearchTree(Tree):
         self.huffman_list = self.get_huffman_list()
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
-
-        # # we report the count for the newly merged nodes
-        # for node in self.partition:
-        #     setattr(node, "partition_mark", True)
-        # self._get_partition_values(self.root)
-        # for node in self.partition:
-        #     delattr(node, "partition_mark")
 
         # update the partition, using the node value
         self._refine_partition(epsilon)
@@ -215,8 +238,8 @@ class SearchTree(Tree):
                 self._report_count(node, self.y_codes)
             # push children in the heap
             # be careful that we need to inverse the order
-            loffset = {False: 0, True: .5}[type(node.left) is Leaf]
-            roffset = {False: 0, True: .5}[type(node.right) is Leaf]
+            loffset = {False: 0, True: 0.5}[type(node.left) is Leaf]
+            roffset = {False: 0, True: 0.5}[type(node.right) is Leaf]
             heapq.heappush(heap, (-node.left.value + loffset, node.left))
             heapq.heappush(heap, (-node.right.value + roffset, node.right))
         # the remaning node form the partition
@@ -226,16 +249,6 @@ class SearchTree(Tree):
 
         # update the minimum partition node index
         self.partition_update()
-
-    # @staticmethod
-    # def _get_partition_values(node):
-    #     if hasattr(node, "partition_mark"):
-    #         return node.value
-    #     else:
-    #         left_value = SearchTree._get_partition_values(node.left)
-    #         right_value = SearchTree._get_partition_values(node.right)
-    #         node.value = left_value + right_value
-    #         return node.value
 
     @staticmethod
     def _report_count(node, y_codes):
