@@ -47,8 +47,8 @@ class Leaf(Vertex):
     def compute_value(self):
         return
 
-    def reset_value(self):
-        self.value = None
+    def reset_value(self, value: int = None):
+        self.value = value
 
     def update_depth(self, depth: int):
         self.depth = depth
@@ -95,10 +95,10 @@ class Node(Vertex):
         else:
             self.value = self.left.value + self.right.value
 
-    def reset_value(self):
-        self.value = None
-        self.left.reset_value()
-        self.right.reset_value()
+    def reset_value(self, value: int = None):
+        self.value = value
+        self.left.reset_value(value)
+        self.right.reset_value(value)
 
     def update_depth(self, depth: int):
         self.depth = depth
@@ -138,7 +138,7 @@ class Node(Vertex):
             out += i + "\n"
         return out
 
-    def _get_print(self, _call=True, length=3):
+    def _get_print(self, _call: bool = True, length: int = 3):
         left_print = self.left._get_print(_call=False, length=length)
         right_print = self.right._get_print(_call=False, length=length)
         left_length, left_depth = len(left_print[0]), len(left_print)
@@ -171,12 +171,12 @@ class Node(Vertex):
 
 
 class Tree:
-    def __init__(self, root: Node):
+    def __init__(self, root: Vertex):
         self.root = root
         self.root.update_depth(0)
 
-    def reset_value(self):
-        self.root.reset_value()
+    def reset_value(self, value: int = None):
+        self.root.reset_value(value)
 
     def get_depth(self):
         return self.root.get_max_depth()
@@ -204,7 +204,7 @@ class Tree:
     def __str__(self):
         return self.root.__str__()
 
-    def replace_root(self, new_root: Node):
+    def replace_root(self, new_root: Vertex):
         root = self.root
         self.root = new_root
         self.root.update_depth(0)
@@ -263,11 +263,11 @@ class Tree:
         -----
         Useful for HeuristicTree
         """
+        new.parent = node.parent
         if node.parent.left == node:
             node.parent.left = new
         elif node.parent.right == node:
             node.parent.right = new
-        new.parent = node.parent
         new.update_depth(node.depth)
         del node
 

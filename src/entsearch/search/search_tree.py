@@ -2,45 +2,251 @@
 Search Tree
 """
 import heapq
+from typing import List
 import numpy as np
-from .tree_constructors import Tree, Leaf
+from .tree_constructors import Leaf, Node, Tree
 
 
 class SearchTree(Tree):
     """
-    Search Tree implementation
+    Heuristic search implementation
 
     Attributes
     ----------
-    root: Node
-        The root of the search tree.
+    partition: list of Vertex
+        List of nodes in the current coarse partition.
     y2leaf: dict of int: Leaf
         Dictionary mapping each class to its corresponding leaf.
-    codes: list of list of int
-        List of all leaf codes according to their position in the tree.
+    y2node: dict of int: Node
+        Dictionary mapping each class to its partition node.
+    huffman_list: list of Leaf
+        List of all nodes in the order they were merged in the Huffman tree.
+    _i_part: int
+        Index of the minimum partition node in the huffman list.
+    mode: Vertex
+        Current empirical mode at partition level.
+    nb_queries: int
+        Total number of queries made.
+    y_cat: np.ndarray
+        List of past samples.
+    y_observations: np.ndarray
+        List of weak observation of past samples.
     """
 
-    def __init__(self, counts):
+    def __init__(self, m: int, comeback: bool = False):
         """
-        Initialize the search tree.
+        Initialize the tree.
 
         Parameters
         ----------
-        codes : list of list of int or float
-            Counts of each class to initialize the tree.
+        m:
+            Maximal number of potential class
+        comeback:
+            Wether to remember past information for future re-query
         """
-        # initialize the leaves
-        self.m = len(counts)
-        nodes = [Leaf(value=counts[i], label=i) for i in range(self.m)]
-        self.y2leaf = {i: nodes[i] for i in range(self.m)}
+        self.m = m
 
-        # build the Huffman tree from counts
-        root = self.huffman_build(nodes)
+        # initialize the leaves and the partition
+        self.partition = [Leaf(value=1, label=i) for i in range(m)]
+        self.y2leaf = {i: self.partition[i] for i in range(m)}
+        self.y2node = {}
+        self.partition_update()
+
+        # build the Huffman tree
+        root = self.huffman_build(self.partition)
         Tree.__init__(self, root)
-        self.codes = self.get_codes()
+        self.reset_value(0)
+
+        # remember Huffman position
+        self.huffman_list = self.get_huffman_list()
+        for i, node in enumerate(self.huffman_list):
+            node._i_huff = i
+
+        # remember the minimum Huffman index of partition nodes
+        self._i_part = 0
+
+        # initialize mode guess
+        self.mode = self.y2node[0]
+        self.nb_queries = 0
+
+        if comeback:
+            # remember past information for comeback
+            self.y_cat = np.arange(m, dtype=int)
+            self.y_observations = np.eye(m, dtype=np.bool)[np.arange(m)]
+
+    def fine_identification(self, y: int, update: bool = True):
+        """
+        Get the precise label of y, and update the Huffman tree.
+
+        Parameters
+        ----------
+        y:
+            Class to update
+        update:
+            Wether to update the tree accordingly
+        """
+        node = self.y2leaf[y]
+        self.nb_queries += node.depth
+        if update:
+            self._vitter_update(node)
+        else:
+            while node is not None:
+                node.value += 1
+                node = node.parent
+
+    def coarse_identification(self, y: int, epsilon: float = 0):
+        """
+        Get the coarse information on y, and update the partition.
+
+        Parameters
+        ----------
+        y:
+            Class to update
+        epsilon:
+            Criterion on the biggest `p(S)` compared to `max p(y)`,
+            for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
+        """
+
+        i = self.root.value
+        # dynamic resizing of past history
+        if i == len(self.y_cat):
+            tmp = self.y_cat
+            length = len(tmp)
+            self.y_cat = np.zeros((2 * length), dtype=int)
+            self.y_cat[:length] = tmp
+            tmp = self.y_observations
+            self.y_observations = np.zeros((2 * length, self.m), dtype=np.bool)
+            self.y_observations[:length] = tmp
+
+        # report observation
+        node = self.y2node[y]
+        self.nb_queries += node.depth
+        self.y_cat[i] = y
+        self.y_observations[i] = node._set_code
+
+        # update the Huffman tree
+        self._vitter_update(node)
+
+        # see if we found the new empirical mode
+        if self.mode < node:
+            self.mode = node
+
+        self._partition_rebalancing(epsilon)
+
+    def batch_identification(self, y_cat: List[int]):
+        pass
+
+    def _partition_rebalancing(self, epsilon: float):
+        """
+        Rebalance partition
+
+        Merge as much sets as possible while ensuring for non-singleton set `S`
+        .. math::`p(S) < \\max_y p(y) - \\epsilon`
+
+        Parameters
+        ----------
+        epsilon:
+        """
+        # if the partition mode is a not singleton, refine the partition
+        ctl = False
+        if not hasattr(self.mode, "label"):
+            print('splitting', self.root.value)
+            self._splitting(epsilon)
+            # check the partition is continuous in the huffman list
+            ctl = (self.mode._i_huff - self._i_part) > len(self.partition)
+
+        # if there exists a coarser partition, find it
+        min1 = self.huffman_list[self._i_part].value
+        min2 = self.huffman_list[self._i_part + 1].value
+        criterion = self.mode.value - epsilon * self.root.value
+        if ctl or min1 + min2 < criterion:
+            print('merging', self.root.value)
+            self._merging(epsilon)
+
+    def _splitting(self, epsilon: float):
+        codes = self.get_codes()
+        setattr(self, "y_codes", codes[self.y_cat[: self.root.value]])
+        self._refine_partition(epsilon)
+        delattr(self, "y_codes")
+
+    def _merging(self, epsilon: float):
+        # we run Huffman at the partition level
+        root = self.huffman_build(self.partition)
+        self.replace_root(root)
+
+        # remember Huffman position
+        self.huffman_list = self.get_huffman_list()
+        for i, node in enumerate(self.huffman_list):
+            node._i_huff = i
+
+        # we report the count for the newly merged nodes
+        for node in self.partition:
+            setattr(node, "partition_mark", True)
+        self._get_partition_values(self.root)
+        for node in self.partition:
+            delattr(node, "partition_mark")
+
+        # update the partition, using the node value
+        self._refine_partition(epsilon)
+
+    def _refine_partition(self, epsilon: float):
+        if hasattr(self, "y_codes"):
+            # we are splitting nodes
+            self.root.ind = np.ones(self.root.value, dtype=bool)
+            n_mode = None
+        else:
+            # we are merging nodes
+            n_mode = self.mode.value
+        n = self.root.value
+
+        # update the partition
+        heap = []
+        heapq.heappush(heap, (-self.root.value, self.root))
+        self.partition = []
+        while len(heap) > 0:
+            # get the node with the biggest value
+            _, node = heapq.heappop(heap)
+            # if have reached our stop criterion, we stop
+            if n_mode is not None and node.value < n_mode - epsilon * n:
+                self.partition.append(node)
+                break
+            # the first leaf we find if the mode
+            if isinstance(node, Leaf):
+                self.partition.append(node)
+                if n_mode is None:
+                    self.mode = node
+                    n_mode = node.value
+                continue
+            if hasattr(self, "y_codes"):
+                # make n_node queries to get children information
+                self._report_count(node, self.y_codes)
+            # push children in the heap
+            # be careful that we need to inverse the order
+            loffset = {False: 0, True: .5}[type(node.left) is Leaf]
+            roffset = {False: 0, True: .5}[type(node.right) is Leaf]
+            heapq.heappush(heap, (-node.left.value + loffset, node.left))
+            heapq.heappush(heap, (-node.right.value + roffset, node.right))
+        # the remaning node form the partition
+        while len(heap) > 0:
+            _, node = heapq.heappop(heap)
+            self.partition.append(node)
+
+        # update the minimum partition node index
+        self._i_part = node._i_huff
+        self.partition_update()
 
     @staticmethod
-    def report_count(node, y_codes):
+    def _get_partition_values(node):
+        if hasattr(node, "partition_mark"):
+            return node.value
+        else:
+            left_value = SearchTree._get_partition_values(node.left)
+            right_value = SearchTree._get_partition_values(node.right)
+            node.value = left_value + right_value
+            return node.value
+
+    @staticmethod
+    def _report_count(node, y_codes):
         """
         Query observation to refine information at node level
 
@@ -51,7 +257,8 @@ class SearchTree(Tree):
         y_codes: numpy.ndarray of int of size (n, c)
             Matrix of codes for each observed class
         """
-        assert node.value != 0, "Node has no observation reported"
+        if node.value == 0:
+            return
 
         # get child dispenser
         pos_ind = y_codes[node.ind, node.depth] == 1
@@ -64,115 +271,128 @@ class SearchTree(Tree):
         node.left.ind[node.ind] = ~pos_ind
         node.left.value = node.value - node.right.value
 
-    def find_admissible_partition(self, y_cat, epsilon=0):
-        """
-        Number of queries need to find the empirical mode in a sequence
-
-        Parameters
-        ----------
-        y_cat: list of int of size (n,)
-            Sequential samples of the categorical variable
-        epsilon: float, optional
-            Stopping criterion for the difference in probability between the
-            empirical mode and the sets in the found partition
-
-        Returns
-        -------
-        partition: list
-            List of nodes in the `epsilon`-admissible partition
-
-        Notes
-        -----
-        This function sets tree nodes values to number of observation
-        """
-        y_codes = self.codes[y_cat]
-        n = len(y_codes)
-        self.root.ind = np.ones(n, dtype=bool)
-        self.root.value = n
-
-        # initialize the heap
-        heap = []
-        heapq.heappush(heap, (-n, self.root))
-
-        partition = []
-        n_mode = None
-        while len(heap) > 0:
-            # get the node with the biggest value
-            _, node = heapq.heappop(heap)
-            # if the node value is smaller than our stop criterion, we stop
-            if n_mode is not None and node.value <= n_mode - epsilon * n:
-                partition.append(node)
-                break
-            # special behavior for leaves, since they have no children
-            if isinstance(node, Leaf):
-                partition.append(node)
-                # if it is the first leaf, we found the empirical mode
-                if n_mode is None:
-                    n_mode = node.value
-                continue
-            # make n_node queries to get children information
-            self.report_count(node, y_codes)
-            # push children in the heap
-            heapq.heappush(heap, (-node.left.value, node.left))
-            heapq.heappush(heap, (-node.right.value, node.right))
-        while len(heap) > 0:
-            _, node = heapq.heappop(heap)
-            partition.append(node)
-        return partition
-
-    def process_batch(self, y_cat, epsilon=0, adapt=True):
-        """
-        Process a batch of observations to update the tree
-
-        Parameters
-        ----------
-        y_cat: list of int
-            Sequential samples of the categorical variable
-        epsilon: float, optional
-            Stopping criterion for the difference in probability between the
-            empirical mode and the sets in the found partition
-        adapt: bool, optional
-            Whether to adapt the tree to the partition found
-
-        Returns
-        -------
-        nb_queries: int
-            Number of queries to identify the partition
-        """
-        partition = self.find_admissible_partition(y_cat, epsilon=epsilon)
-        if adapt:
-            root = self.huffman_build(partition)
-            self.replace_root(root)
-            self.codes = self.get_codes()
-        nb_queries = 0
-        for node in partition:
-            nb_queries += node.value * node.depth
-        return nb_queries
-
-    def get_nb_queries(self, y_cat):
-        return self.process_batch(y_cat, epsilon=0, adapt=False)
-
-    def get_nb_queries_sequential(self, y_cat):
-        """
-        Get the number of queries made to identify the empirical mode
-        with sequential search
-
-        Parameters
-        ----------
-        y_cat: list of int
-            Sequential samples of the categorical variable
-
-        Returns
-        -------
-        nb_queries: int
-            Number of queries to identify the empirical mode
-        """
-        n = len(y_cat)
-        m = len(self.codes)
-        y_one_hot = np.zeros((n, m))
-        y_one_hot[np.arange(n), y_cat] = 1
-        nb_queries = (y_one_hot @ self.codes != -1).sum()
-        return nb_queries
+        # TODO: report nb_queries
 
     def __repr__(self):
         return f"SearchTree at {id(self)}"
+
+    def _vitter_update(self, node):
+        """
+        Update Huffman tree due to recent observation
+
+        This method assimilates to dynamic Huffman coding (Vitter algorithm)
+
+        Parameters
+        ----------
+        node: Node
+            Node to update
+        """
+        # stop at the root node
+        if node.parent is None:
+            node.value += 1
+            return
+
+        # get the node and swap it with max equals elements
+        i_node = node._i_huff
+        i_swap = i_node
+        while not node < self.huffman_list[i_swap + 1]:
+            i_swap += 1
+        if i_swap != i_node:
+            self._swap(i_node, i_swap)
+            i_node = i_swap
+
+        # increase node value
+        node.value += 1
+        parent = node.parent
+
+        # special behavior if the node is new
+        if parent.value == 0:
+            if parent._i_huff != i_node + 1:
+                # remove the node, and merge sibling and parent
+                if parent.left == node:
+                    self.replace(parent, parent.right)
+                    parent = parent.right
+                # be mindful to keep Huffman ordering
+                else:
+                    assert self.huffman_list[i_node + 1].value == 0
+                    assert type(self.huffman_list[i_node + 1]) is Node
+                    self._swap(parent.left._i_huff, i_node + 1)
+                    self.replace(parent, parent.left)
+                    parent = parent.left
+
+                # get the highest node with no observation
+                while parent.parent is not None and parent.parent.value == 0:
+                    parent = parent.parent
+
+                # set the node at this level
+                grand_parent = parent.parent
+                new = Node(parent, node)
+                # if parent was the root, we have changed it
+                if grand_parent is None:
+                    self.replace_root(new)
+                else:
+                    # avoid recursion issue with depth computation
+                    parent.parent = grand_parent
+                    self.replace(parent, new)
+                    parent.parent = new
+
+                # rebuild the huffman list
+                self.huffman_list = self.get_huffman_list()
+                for i, node in enumerate(self.huffman_list):
+                    node._i_huff = i
+
+                # update the parent whose value has changed
+                new.value -= 1
+                parent = new
+        else:
+            # keep the huffman order by swapping the node again
+            i_swap = i_node
+            while self.huffman_list[i_swap + 1] < node:
+                i_swap += 1
+            if i_swap != i_node:
+                swapped = self.huffman_list[i_swap]
+                self._swap(i_node, i_swap)
+
+                # update the parent whose value has changed
+                if swapped.value != node.value:
+                    parent = node.parent
+
+        # update the parent node
+        self._vitter_update(parent)
+
+    def _swap(self, i_node, i_swap):
+        node = self.huffman_list[i_node]
+        swapped = self.huffman_list[i_swap]
+
+        # update list and pointers
+        self.huffman_list[i_node] = swapped
+        swapped._i_huff = i_node
+        self.huffman_list[i_swap] = node
+        node._i_huff = i_swap
+
+        # swap in the tree
+        self.swap(node, swapped)
+
+    def partition_update(self):
+        """
+        Update partition dictionary and set codes.
+        """
+        # update the partition dictionary
+        for node in self.partition:
+            y_set = self.get_leaves_set(node)
+            for y in y_set:
+                self.y2node[y] = node
+            node._set_code = np.zeros(self.m, dtype=bool)
+            node._set_code[y_set] = 1
+
+    @staticmethod
+    def get_leaves_set(node):
+        """
+        Get list of leaf descendants labels
+        """
+        if type(node) is Leaf:
+            return [node.label]
+        else:
+            left_set = SearchTree.get_leaves_set(node.left)
+            right_set = SearchTree.get_leaves_set(node.right)
+            return left_set + right_set
