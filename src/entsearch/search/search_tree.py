@@ -146,7 +146,6 @@ class SearchTree(Tree):
         """
         # if the partition mode is a not singleton, refine the partition
         if not hasattr(self.mode, "label"):
-            print('splitting', self.root.value)
             self._splitting(epsilon)
             self._merging(epsilon)
         # or if there exists a coarser partition, find it
@@ -155,7 +154,6 @@ class SearchTree(Tree):
             min2 = self.huffman_list[self._i_part + 1].value
             criterion = self.mode.value - epsilon * self.root.value
             if min1 + min2 < criterion:
-                print('merging', self.root.value)
                 self._merging(epsilon)
 
     def _splitting(self, epsilon: float):
