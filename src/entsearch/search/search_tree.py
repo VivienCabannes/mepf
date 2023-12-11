@@ -71,7 +71,7 @@ class SearchTree(Tree):
         if comeback:
             # remember past information for comeback
             self.y_cat = np.arange(m, dtype=int)
-            self.y_observations = np.eye(m, dtype=np.bool)[np.arange(m)]
+            self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
 
     def fine_identification(self, y: int, update: bool = True):
         """
@@ -114,7 +114,7 @@ class SearchTree(Tree):
             self.y_cat = np.zeros((2 * length), dtype=int)
             self.y_cat[:length] = tmp
             tmp = self.y_observations
-            self.y_observations = np.zeros((2 * length, self.m), dtype=np.bool)
+            self.y_observations = np.zeros((2 * length, self.m), dtype=bool)
             self.y_observations[:length] = tmp
 
         # report observation
@@ -310,7 +310,7 @@ class SearchTree(Tree):
         node.value += 1
         parent = node.parent
 
-        # special behavior if the node is new
+        # technicalities related to new nodes
         if parent.value == 0:
             if parent._i_huff != i_node + 1:
                 # remove the node, and merge sibling and parent
