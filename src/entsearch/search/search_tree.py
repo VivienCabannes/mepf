@@ -50,7 +50,6 @@ class SearchTree(Tree):
         self.partition = [Leaf(value=1, label=i) for i in range(m)]
         self.y2leaf = {i: self.partition[i] for i in range(m)}
         self.y2node = {}
-        self.partition_update()
 
         # build the Huffman tree
         root = self.huffman_build(self.partition)
@@ -61,9 +60,7 @@ class SearchTree(Tree):
         self.huffman_list = self.get_huffman_list()
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
-
-        # remember the minimum Huffman index of partition nodes
-        self._i_part = 0
+        self.partition_update()
 
         # initialize mode guess
         self.mode = self.y2node[0]
@@ -148,20 +145,18 @@ class SearchTree(Tree):
         epsilon:
         """
         # if the partition mode is a not singleton, refine the partition
-        ctl = False
         if not hasattr(self.mode, "label"):
             print('splitting', self.root.value)
             self._splitting(epsilon)
-            # check the partition is continuous in the huffman list
-            ctl = (self.mode._i_huff - self._i_part) > len(self.partition)
-
-        # if there exists a coarser partition, find it
-        min1 = self.huffman_list[self._i_part].value
-        min2 = self.huffman_list[self._i_part + 1].value
-        criterion = self.mode.value - epsilon * self.root.value
-        if ctl or min1 + min2 < criterion:
-            print('merging', self.root.value)
             self._merging(epsilon)
+        # or if there exists a coarser partition, find it
+        else:
+            min1 = self.huffman_list[self._i_part].value
+            min2 = self.huffman_list[self._i_part + 1].value
+            criterion = self.mode.value - epsilon * self.root.value
+            if min1 + min2 < criterion:
+                print('merging', self.root.value)
+                self._merging(epsilon)
 
     def _splitting(self, epsilon: float):
         codes = self.get_codes()
@@ -179,12 +174,12 @@ class SearchTree(Tree):
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
 
-        # we report the count for the newly merged nodes
-        for node in self.partition:
-            setattr(node, "partition_mark", True)
-        self._get_partition_values(self.root)
-        for node in self.partition:
-            delattr(node, "partition_mark")
+        # # we report the count for the newly merged nodes
+        # for node in self.partition:
+        #     setattr(node, "partition_mark", True)
+        # self._get_partition_values(self.root)
+        # for node in self.partition:
+        #     delattr(node, "partition_mark")
 
         # update the partition, using the node value
         self._refine_partition(epsilon)
@@ -232,18 +227,17 @@ class SearchTree(Tree):
             self.partition.append(node)
 
         # update the minimum partition node index
-        self._i_part = node._i_huff
         self.partition_update()
 
-    @staticmethod
-    def _get_partition_values(node):
-        if hasattr(node, "partition_mark"):
-            return node.value
-        else:
-            left_value = SearchTree._get_partition_values(node.left)
-            right_value = SearchTree._get_partition_values(node.right)
-            node.value = left_value + right_value
-            return node.value
+    # @staticmethod
+    # def _get_partition_values(node):
+    #     if hasattr(node, "partition_mark"):
+    #         return node.value
+    #     else:
+    #         left_value = SearchTree._get_partition_values(node.left)
+    #         right_value = SearchTree._get_partition_values(node.right)
+    #         node.value = left_value + right_value
+    #         return node.value
 
     @staticmethod
     def _report_count(node, y_codes):
@@ -314,8 +308,6 @@ class SearchTree(Tree):
                     parent = parent.right
                 # be mindful to keep Huffman ordering
                 else:
-                    assert self.huffman_list[i_node + 1].value == 0
-                    assert type(self.huffman_list[i_node + 1]) is Node
                     self._swap(parent.left._i_huff, i_node + 1)
                     self.replace(parent, parent.left)
                     parent = parent.left
@@ -378,12 +370,15 @@ class SearchTree(Tree):
         Update partition dictionary and set codes.
         """
         # update the partition dictionary
+        self._i_part = np.inf
         for node in self.partition:
             y_set = self.get_leaves_set(node)
             for y in y_set:
                 self.y2node[y] = node
             node._set_code = np.zeros(self.m, dtype=bool)
             node._set_code[y_set] = 1
+            if self._i_part > node._i_huff:
+                self._i_part = node._i_huff
 
     @staticmethod
     def get_leaves_set(node):
