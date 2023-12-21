@@ -151,6 +151,7 @@ class SearchTree(Tree):
         codes = self.get_codes()
         self.root.value = len(y_cat)
         setattr(self, "y_codes", codes[y_cat])
+        self.get_leaves_set(self.root)
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
@@ -158,10 +159,9 @@ class SearchTree(Tree):
             root = self.huffman_build(self.partition)
             self.replace_root(root)
 
-            # remember Huffman position
-            self.huffman_list = self.get_huffman_list()
-            for i, node in enumerate(self.huffman_list):
-                node._i_huff = i
+            # update attributes
+            self.huffman_update()
+            self.partition_update()
 
     def _partition_rebalancing(self, epsilon: float):
         """
@@ -189,6 +189,7 @@ class SearchTree(Tree):
     def _splitting(self, epsilon: float):
         codes = self.get_codes()
         setattr(self, "y_codes", codes[self.y_cat[:self.root.value]])
+        self.get_leaves_set(self.root)
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
@@ -197,12 +198,11 @@ class SearchTree(Tree):
         root = self.huffman_build(self.partition)
         self.replace_root(root)
 
-        # remember Huffman position
-        self.huffman_list = self.get_huffman_list()
-        for i, node in enumerate(self.huffman_list):
-            node._i_huff = i
+        # update attributes
+        self.huffman_update()
 
         # update the partition, using the node value
+        assert not hasattr(self, "y_codes")
         self._refine_partition(epsilon)
 
     def _refine_partition(self, epsilon: float):
@@ -250,8 +250,7 @@ class SearchTree(Tree):
         # update the minimum partition node index
         self.partition_update()
 
-    @staticmethod
-    def _report_count(node, y_codes):
+    def _report_count(self, node, y_codes):
         """
         Query observation to refine information at node level
 
@@ -276,7 +275,22 @@ class SearchTree(Tree):
         node.left.ind[node.ind] = ~pos_ind
         node.left.value = node.value - node.right.value
 
-        # TODO: report nb_queries
+        rcode, lcode = node.right._set_code, node.left._set_code
+        # report nb_queries
+        if hasattr(self, "y_observations"):
+            # only queries for new information
+            y_obs = self.y_observations[:self.root.value]
+            right_unknown = y_obs[node.right.ind] & ~rcode
+            right_queries = (right_unknown.sum(axis=1) != 0).sum()
+            left_unknown = y_obs[node.left.ind] & ~lcode
+            left_queries = (left_unknown.sum(axis=1) != 0).sum()
+            self.nb_queries += right_queries + left_queries
+            # update observations
+            self.y_observations[:self.root.value][node.right.ind] &= rcode
+            self.y_observations[:self.root.value][node.left.ind] &= lcode
+        else:
+            # number of queries if we do not remember past information
+            self.nb_queries += node.ind.sum()
 
     def __repr__(self):
         return f"SearchTree at {id(self)}"
@@ -376,6 +390,14 @@ class SearchTree(Tree):
         # swap in the tree
         self.swap(node, swapped)
 
+    def huffman_update(self):
+        """
+        Update model and nodes attributes to remember Huffman positions.
+        """
+        self.huffman_list = self.get_huffman_list()
+        for i, node in enumerate(self.huffman_list):
+            node._i_huff = i
+
     def partition_update(self):
         """
         Update partition dictionary and set codes.
@@ -386,19 +408,19 @@ class SearchTree(Tree):
             y_set = self.get_leaves_set(node)
             for y in y_set:
                 self.y2node[y] = node
-            node._set_code = np.zeros(self.m, dtype=bool)
-            node._set_code[y_set] = 1
             if self._i_part > node._i_huff:
                 self._i_part = node._i_huff
 
-    @staticmethod
-    def get_leaves_set(node):
+    def get_leaves_set(self, node):
         """
-        Get list of leaf descendants labels
+        Get list of leaf descendants labels and set codes.
         """
         if type(node) is Leaf:
-            return [node.label]
+            y_set = [node.label]
         else:
-            left_set = SearchTree.get_leaves_set(node.left)
-            right_set = SearchTree.get_leaves_set(node.right)
-            return left_set + right_set
+            left_set = self.get_leaves_set(node.left)
+            right_set = self.get_leaves_set(node.right)
+            y_set = left_set + right_set
+        node._set_code = np.zeros(self.m, dtype=bool)
+        node._set_code[y_set] = 1
+        return y_set
