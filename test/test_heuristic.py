@@ -35,3 +35,7 @@ def test_heuristic():
 
     assert model.__str__() == out_str
     assert finer_model.__str__() == fin_str
+
+
+if __name__ == "__main__":
+    test_heuristic()

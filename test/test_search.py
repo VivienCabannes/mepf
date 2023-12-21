@@ -55,3 +55,7 @@ def test_search():
 
     assert model.__str__() == out_str
     assert model_bis.__str__() == out_str
+
+
+if __name__ == "__main__":
+    test_search()

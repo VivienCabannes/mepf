@@ -30,3 +30,7 @@ def test_huffman():
     for node in huffman_list[1:]:
         assert old < node
         old = node
+
+
+if __name__ == "__main__":
+    test_huffman()
