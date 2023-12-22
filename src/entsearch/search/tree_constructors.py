@@ -13,16 +13,6 @@ class Vertex:
         self.parent: Vertex = None
         self.depth: int = None
 
-    def delete_parent(self):
-        parent = self.parent
-        if parent is None:
-            return
-        parent.left = None
-        parent.right = None
-        parent.delete_parent()
-        self.parent = None
-        del parent
-
     def __lt__(self, other: Vertex):
         # None value is seen a +inf
         if self.value is None:
@@ -43,12 +33,6 @@ class Leaf(Vertex):
         Vertex.__init__(self)
         self.value = value
         self.label = label
-
-    def compute_value(self):
-        return
-
-    def reset_value(self, value: int = None):
-        self.value = value
 
     def update_depth(self, depth: int):
         self.depth = depth
@@ -85,20 +69,13 @@ class Node(Vertex):
             self.right = right
             self.left.parent = self
             self.right.parent = self
-        self.compute_value()
 
-    def compute_value(self):
         if self.left.value is None:
             self.value = None
         elif self.right.value is None:
             self.value = None
         else:
             self.value = self.left.value + self.right.value
-
-    def reset_value(self, value: int = None):
-        self.value = value
-        self.left.reset_value(value)
-        self.right.reset_value(value)
 
     def update_depth(self, depth: int):
         self.depth = depth
@@ -175,9 +152,6 @@ class Tree:
         self.root = root
         self.root.update_depth(0)
 
-    def reset_value(self, value: int = None):
-        self.root.reset_value(value)
-
     def get_depth(self):
         return self.root.get_max_depth()
 
@@ -248,30 +222,6 @@ class Tree:
             node2.update_depth(depth1)
 
     @staticmethod
-    def replace(node: Vertex, new: Vertex):
-        """
-        Replacing node by a new vertex
-
-        Parameters
-        ----------
-        node: Vertex
-            Vertex to delete
-        new: Vertex
-            New node
-
-        Notes
-        -----
-        Useful for HeuristicTree
-        """
-        new.parent = node.parent
-        if node.parent.left == node:
-            node.parent.left = new
-        elif node.parent.right == node:
-            node.parent.right = new
-        new.update_depth(node.depth)
-        del node
-
-    @staticmethod
     def huffman_build(nodes: List[Vertex]):
         """
         Build Huffman tree on top of nodes (seen as leaves)
@@ -292,6 +242,23 @@ class Tree:
             left, right = heapq.heappop(heap), heapq.heappop(heap)
             heapq.heappush(heap, Node(left, right))
         return heap[0]
+
+    @staticmethod
+    def build_balanced_subtree(nodes: List[Vertex]):
+        """
+        Build balanced subtree with specified vertex.
+        """
+        for node in nodes:
+            node.value = 1
+        root = Tree.huffman_build(nodes)
+        node_list = [root]
+        while len(node_list) > 0:
+            node = node_list.pop(0)
+            node.value = 0
+            if type(node) is Node:
+                node_list.append(node.left)
+                node_list.append(node.right)
+        return root
 
     def get_huffman_list(self):
         """

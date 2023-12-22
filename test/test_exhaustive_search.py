@@ -5,7 +5,7 @@ from entsearch.search import SearchTree
 from entsearch.data import sample_dirichlet
 
 
-def test_exhaustive_search():
+def test_exhaustive_search(helpers):
     rng = np.random.default_rng(seed=1000)
 
     # generate data
@@ -21,13 +21,13 @@ def test_exhaustive_search():
         model.fine_identification(y, update=False)
     nb_queries_dichotomic = model.nb_queries
 
-    model.reset_value(value=0)
+    helpers.reset_value(model)
     model.nb_queries = 0
     for y in y_cat:
         model.fine_identification(y, update=True)
     nb_queries_adaptive = model.nb_queries
 
-    model.reset_value(value=0)
+    helpers.reset_value(model)
     model.nb_queries = 0
     for y in y_cat:
         model.fine_identification(y, update=False)
@@ -43,4 +43,6 @@ def test_exhaustive_search():
 
 
 if __name__ == "__main__":
-    test_exhaustive_search()
+    from conftest import Helper
+    helpers = Helper()
+    test_exhaustive_search(helpers)

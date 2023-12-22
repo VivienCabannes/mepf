@@ -4,7 +4,7 @@ from entsearch.search import SearchTree
 from entsearch.data import sample_dirichlet
 
 
-def test_search():
+def test_search(helpers):
     rng = np.random.default_rng(seed=0)
 
     m = 10
@@ -17,7 +17,7 @@ def test_search():
     model_bis = SearchTree(m)
 
     for i in range(50):
-        model.reset_value()
+        helpers.reset_value(model)
         y_cat = rng.choice(m, size=n, p=proba)
 
         model.batch_identification(y_cat, epsilon=0, update=False)
@@ -47,15 +47,16 @@ def test_search():
         for i, node in enumerate(model.huffman_list):
             node._i_huff = i
 
-        model_bis.reset_value()
+        helpers.reset_value(model_bis)
         model_bis.batch_identification(y_cat, epsilon=0, update=True)
 
-
-    out_str = '        Node: 100000                                                                                                                                \n\x1b[1mLeaf 0: 42826\x1b[0m |                                                     Node:  57174                                                                    \n              |                       Node:  21675                        |                                                     Node:  35499        \n              |         Node: None          |         Node: None          |                        Node: None                         | \x1b[1mLeaf 1: None\x1b[0m\n              | \x1b[1mLeaf 4: None\x1b[0m | \x1b[1mLeaf 8: None\x1b[0m | \x1b[1mLeaf 6: None\x1b[0m | \x1b[1mLeaf 2: None\x1b[0m |         Node: None          |         Node: None          |             \n              |                                                           | \x1b[1mLeaf 7: None\x1b[0m | \x1b[1mLeaf 9: None\x1b[0m | \x1b[1mLeaf 3: None\x1b[0m | \x1b[1mLeaf 5: None\x1b[0m |             \n'
+    out_str = '        Node: 100000                                                                                                     \n\x1b[1mLeaf 0: 42826\x1b[0m |                                         Node:  57174                                                     \n              |                 Node:  21675                  |                                         Node:  35499     \n              |     Node:      0      |     Node:      0      |                 Node:      0                  | \x1b[1mLeaf 1: 0\x1b[0m\n              | \x1b[1mLeaf 4: 0\x1b[0m | \x1b[1mLeaf 8: 0\x1b[0m | \x1b[1mLeaf 6: 0\x1b[0m | \x1b[1mLeaf 2: 0\x1b[0m |     Node:      0      |     Node:      0      |          \n              |                                               | \x1b[1mLeaf 7: 0\x1b[0m | \x1b[1mLeaf 9: 0\x1b[0m | \x1b[1mLeaf 3: 0\x1b[0m | \x1b[1mLeaf 5: 0\x1b[0m |          \n'
 
     assert model.__str__() == out_str
     assert model_bis.__str__() == out_str
 
 
 if __name__ == "__main__":
-    test_search()
+    from conftest import Helper
+    helpers = Helper()
+    test_search(helpers)

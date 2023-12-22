@@ -48,20 +48,22 @@ class SearchTree(Tree):
         """
         self.m = m
 
-        # initialize the leaves and the partition
-        self.partition = [Leaf(value=1, label=i) for i in range(m)]
-        self.y2leaf = {i: self.partition[i] for i in range(m)}
+        # initialize leaves mappings
+        self.y2leaf = {i: Leaf(value=0, label=i) for i in range(m)}
         self.y2node = {}
 
-        # build the Huffman tree
-        root = self.huffman_build(self.partition)
+        # initialize the tree
+        root = Tree.build_balanced_subtree(list(self.y2leaf.values()))
         Tree.__init__(self, root)
-        self.reset_value(0)
+
+        # initialize the partition
+        self.partition = [root]
 
         # remember Huffman position
         self.huffman_list = self.get_huffman_list()
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
+            node.value = 0
         self.partition_update()
 
         # initialize mode guess
@@ -197,8 +199,6 @@ class SearchTree(Tree):
         # we run Huffman at the partition level
         root = self.huffman_build(self.partition)
         self.replace_root(root)
-
-        # update attributes
         self.huffman_update()
 
         # update the partition, using the node value
@@ -311,7 +311,12 @@ class SearchTree(Tree):
             node.value += 1
             return
 
-        # get the node and swap it with max equals elements
+        # technicalities related to new nodes
+        if type(node) is Leaf and node.value == 0:
+            self._nyo_update(node)
+            return
+
+        # get the node and swap it with max equal elements
         i_node = node._i_huff
         i_swap = i_node
         while not node < self.huffman_list[i_swap + 1]:
@@ -324,58 +329,55 @@ class SearchTree(Tree):
         node.value += 1
         parent = node.parent
 
-        # technicalities related to new nodes
-        if parent.value == 0:
-            if parent._i_huff != i_node + 1:
-                # remove the node, and merge sibling and parent
-                if parent.left == node:
-                    self.replace(parent, parent.right)
-                    parent = parent.right
-                # be mindful to keep Huffman ordering
-                else:
-                    self._swap(parent.left._i_huff, i_node + 1)
-                    self.replace(parent, parent.left)
-                    parent = parent.left
+        # keep the huffman order by swapping the node again
+        i_swap = i_node
+        while self.huffman_list[i_swap + 1] < node:
+            i_swap += 1
+        if i_swap != i_node:
+            swapped = self.huffman_list[i_swap]
+            self._swap(i_node, i_swap)
 
-                # get the highest node with no observation
-                while parent.parent is not None and parent.parent.value == 0:
-                    parent = parent.parent
-
-                # set the node at this level
-                grand_parent = parent.parent
-                new = Node(parent, node)
-                # if parent was the root, we have changed it
-                if grand_parent is None:
-                    self.replace_root(new)
-                else:
-                    # avoid recursion issue with depth computation
-                    parent.parent = grand_parent
-                    self.replace(parent, new)
-                    parent.parent = new
-
-                # rebuild the huffman list
-                self.huffman_list = self.get_huffman_list()
-                for i, node in enumerate(self.huffman_list):
-                    node._i_huff = i
-
-                # update the parent whose value has changed
-                new.value -= 1
-                parent = new
-        else:
-            # keep the huffman order by swapping the node again
-            i_swap = i_node
-            while self.huffman_list[i_swap + 1] < node:
-                i_swap += 1
-            if i_swap != i_node:
-                swapped = self.huffman_list[i_swap]
-                self._swap(i_node, i_swap)
-
-                # update the parent whose value has changed
-                if swapped.value != node.value:
-                    parent = node.parent
+            # update the parent whose value has changed
+            if swapped.value != node.value:
+                parent = node.parent
 
         # update the parent node
         self._vitter_update(parent)
+
+    def _nyo_update(self, leaf):
+        # find parent with no observation
+        node = leaf
+        while node.parent is not None and node.parent.value == 0:
+            node = node.parent
+
+        leaves_set = set(self.get_leaves_set(node))
+        leaves_set.remove(leaf.label)
+        if len(leaves_set) > 1:
+            grand_parent = node.parent
+            # create new `not yet observed`` balanced tree
+            nyo_leaves = [self.y2leaf[i] for i in leaves_set]
+            nyo = Tree.build_balanced_subtree(nyo_leaves)
+            # slide newly observed leaf up in the tree
+            new_node = Node(nyo, leaf)
+            if grand_parent is None:
+                self.replace_root(new_node)
+            else:
+                new_node.parent = grand_parent
+                if grand_parent.left == node:
+                    grand_parent.left = new_node
+                elif grand_parent.right == node:
+                    grand_parent.right = new_node
+                new_node.update_depth(node.depth)
+                del node
+
+            # update attributes
+            self.huffman_list = self.get_huffman_list()
+            for i, node in enumerate(self.huffman_list):
+                node._i_huff = i
+            self.partition_update()
+
+        leaf.value += 1
+        self._vitter_update(leaf.parent)
 
     def _swap(self, i_node, i_swap):
         node = self.huffman_list[i_node]
