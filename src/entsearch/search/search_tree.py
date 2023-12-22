@@ -311,11 +311,6 @@ class SearchTree(Tree):
             node.value += 1
             return
 
-        # technicalities related to new nodes
-        if type(node) is Leaf and node.value == 0:
-            self._nyo_update(node)
-            return
-
         # get the node and swap it with max equal elements
         i_node = node._i_huff
         i_swap = i_node
@@ -325,14 +320,21 @@ class SearchTree(Tree):
             self._swap(i_node, i_swap)
             i_node = i_swap
 
+        # technicalities related to new nodes
+        if type(node) is Leaf and node.value == 0:
+            self._nyo_update(node)
+            return
+
         # increase node value
         node.value += 1
         parent = node.parent
 
         # keep the huffman order by swapping the node again
+        node.parent.value += 1
         i_swap = i_node
         while self.huffman_list[i_swap + 1] < node:
             i_swap += 1
+        node.parent.value -= 1
         if i_swap != i_node:
             swapped = self.huffman_list[i_swap]
             self._swap(i_node, i_swap)
