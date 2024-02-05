@@ -1,9 +1,6 @@
 #### TODO
 
-Heuristic Search algorithm
-- Compute number of queries made
-- First start with a naive query counts.
-- Then implement the "observation matrix" logic
+Correct NYT introduction in our algorithm.
 
 Bandits algorithm
 - Write bandits algorithm.
@@ -11,3 +8,5 @@ Bandits algorithm
 Evaluation
 - Write the algorithms as they appear exactly in the paper.
 - Doubling trick for the fixed tree search so to have a function t: num of queries -> estimated mode.
+
+- Add github action
