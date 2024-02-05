@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from entsearch.search import SearchTree
+from entsearch import ExhaustiveSearch
 from entsearch.data import sample_dirichlet
 
 
@@ -15,22 +15,24 @@ def test_exhaustive_search(helpers):
     proba = sample_dirichlet(alpha, generator=rng)
     y_cat = rng.choice(m, size=n, p=proba)
 
-    model = SearchTree(m)
+    model = ExhaustiveSearch(m, adaptive=False)
 
     for y in y_cat:
-        model.fine_identification(y, update=False)
+        model(y)
     nb_queries_dichotomic = model.nb_queries
 
     helpers.reset_value(model)
+    model.adaptive = True
     model.nb_queries = 0
     for y in y_cat:
-        model.fine_identification(y, update=True)
+        model(y)
     nb_queries_adaptive = model.nb_queries
 
     helpers.reset_value(model)
+    model.adaptive = False
     model.nb_queries = 0
     for y in y_cat:
-        model.fine_identification(y, update=False)
+        model(y)
     nb_queries_huffman = model.nb_queries
 
     assert nb_queries_dichotomic == 3469

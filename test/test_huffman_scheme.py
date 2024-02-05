@@ -1,10 +1,10 @@
 import numpy as np
 
-from entsearch.search import SearchTree
+from entsearch import ExhaustiveSearch
 from entsearch.data import sample_dirichlet
 
 
-def test_huffman():
+def test_huffman_scheme():
     rng = np.random.default_rng(seed=1000)
 
     m = 10
@@ -14,9 +14,9 @@ def test_huffman():
     n = 10_000
     y_cat = rng.choice(m, size=n, p=proba)
 
-    model = SearchTree(m)
+    model = ExhaustiveSearch(m, adaptive=True)
     for y in y_cat:
-        model.fine_identification(y, update=True)
+        model(y)
 
     # Check frequencies
     y_freqs = np.eye(m)[y_cat].sum(axis=0)
@@ -33,4 +33,4 @@ def test_huffman():
 
 
 if __name__ == "__main__":
-    test_huffman()
+    test_huffman_scheme()

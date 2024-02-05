@@ -1,6 +1,6 @@
 import pytest
 
-from entsearch.search.tree_constructors import Node
+from entsearch.binary_tree import Node
 
 
 class Helper:
