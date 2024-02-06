@@ -154,15 +154,15 @@ class BatchSearch(Tree):
         # report nb_queries
         if hasattr(self, "y_observations"):
             # only queries for new information
-            y_obs = self.y_observations[:self.root.value]
+            y_obs = self.y_observations[: self.root.value]
             right_unknown = y_obs[node.right.ind] & ~rcode
             right_queries = (right_unknown.sum(axis=1) != 0).sum()
             left_unknown = y_obs[node.left.ind] & ~lcode
             left_queries = (left_unknown.sum(axis=1) != 0).sum()
             self.nb_queries += right_queries + left_queries
             # update observations
-            self.y_observations[:self.root.value][node.right.ind] &= rcode
-            self.y_observations[:self.root.value][node.left.ind] &= lcode
+            self.y_observations[: self.root.value][node.right.ind] &= rcode
+            self.y_observations[: self.root.value][node.left.ind] &= lcode
         else:
             # number of queries if we do not remember past information
             self.nb_queries += node.ind.sum()

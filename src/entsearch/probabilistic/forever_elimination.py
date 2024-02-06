@@ -1,5 +1,5 @@
 """
-Exhaustive Tree Search
+Forever Elimination
 """
 import numpy as np
 
@@ -8,12 +8,14 @@ from ..binary_tree import EliminatedNode, Leaf, Node, Tree
 
 class ForeverElimination(Tree):
     """
-    Exhaustive Tree Search
+    Elimination Forever
 
     Attributes
     ----------
     y2leaf: dict of int: Leaf
         Dictionary mapping each class to its corresponding leaf.
+    y2node: dict of int: Node
+        Dictionary mapping each class to its partition node.
     huffman_list: list of Leaf
         List of all nodes in the order they were merged in the Huffman tree.
     nb_queries: int
