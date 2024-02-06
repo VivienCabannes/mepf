@@ -169,7 +169,7 @@ class BatchSearch(Tree):
             self.nb_queries += node.ind.sum()
 
     def __repr__(self):
-        return f"BatchSearchTree at {id(self)}"
+        return f"BatchSearch at {id(self)}"
 
     def get_leaves_set(self, node):
         """

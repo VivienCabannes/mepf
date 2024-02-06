@@ -66,7 +66,7 @@ class ExhaustiveSearch(Tree):
                 node = node.parent
 
     def __repr__(self):
-        return f"SearchTree at {id(self)}"
+        return f"ExhaustiveSearchTree at {id(self)}"
 
     def _vitter_update(self, node):
         """

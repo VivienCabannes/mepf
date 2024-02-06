@@ -1,5 +1,5 @@
 """
-Search Tree
+Generic Search Tree
 """
 import heapq
 from typing import List
@@ -85,6 +85,10 @@ class SearchTree(Tree):
             Class to update
         update:
             Wether to update the tree accordingly
+
+        See Also
+        --------
+        ExhausiveSearch
         """
         node = self.y2leaf[y]
         self.nb_queries += node.depth
@@ -106,6 +110,10 @@ class SearchTree(Tree):
         epsilon:
             Criterion on the biggest `p(S)` compared to `max p(y)`,
             for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
+
+        See Also
+        --------
+        TruncatedSearch
         """
 
         i = self.root.value
@@ -149,6 +157,10 @@ class SearchTree(Tree):
         epsilon:
             Criterion on the biggest `p(S)` compared to `max p(y)`,
             for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
+
+        See Also
+        --------
+        BatchSearch
         """
         codes = self.get_codes()
         self.root.value = len(y_cat)
