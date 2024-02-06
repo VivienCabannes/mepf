@@ -1,6 +1,9 @@
 ENTSEARCH: Mode search through entropic coding
 ==============================================
 
+To minimize boilerplate code, we provide a single class that can be called to run any algorithm.
+However, to improve code readibility, each algorithms are equally implemented in different folder.
+
 Installation
 ------------
 From source

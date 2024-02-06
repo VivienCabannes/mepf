@@ -3,7 +3,7 @@ Exhaustive Tree Search
 """
 import numpy as np
 
-from .binary_tree import Leaf, Node, Tree
+from ..binary_tree import Leaf, Node, Tree
 
 
 class ExhaustiveSearch(Tree):

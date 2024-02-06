@@ -1,4 +1,4 @@
 
-from .batch_search import BatchSearch
-from .exhaustive_search import ExhaustiveSearch
-from .truncated_search import TruncatedSearch
+from .deterministic.batch import BatchSearch
+from .deterministic.exhaustive import ExhaustiveSearch
+from .deterministic.truncated import TruncatedSearch

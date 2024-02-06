@@ -4,7 +4,7 @@ Batch Tree Search
 import heapq
 from typing import List
 import numpy as np
-from .binary_tree import Leaf, Tree
+from ..binary_tree import Leaf, Tree
 
 
 class BatchSearch(Tree):
@@ -25,7 +25,7 @@ class BatchSearch(Tree):
         List of weak observation of past samples.
     """
 
-    def __init__(self, m: int, comeback: bool = False):
+    def __init__(self, m: int, comeback: bool = False, adaptive: bool = True):
         """
         Initialize the tree.
 
@@ -35,10 +35,11 @@ class BatchSearch(Tree):
             Maximal number of potential class
         comeback:
             Wether to remember past information for future re-query
-        batch:
-            Wether we will find empirical mode in a batch
+        adaptive:
+            Wether to update the tree online
         """
         self.m = m
+        self.adaptive = adaptive
 
         y2leaf = [Leaf(value=0, label=i) for i in range(m)]
 
@@ -58,7 +59,7 @@ class BatchSearch(Tree):
             self.y_cat = np.arange(m, dtype=int)
             self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
 
-    def __call__(self, y_cat: List[int], epsilon: float = 0, update: bool = True):
+    def __call__(self, y_cat: List[int], epsilon: float = 0):
         """
         Find the emprical mode in a batch
 
@@ -69,8 +70,6 @@ class BatchSearch(Tree):
         epsilon:
             Criterion on the biggest `p(S)` compared to `max p(y)`,
             for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
-        update:
-            Wether to update the tree accordingly
         """
         codes = self.get_codes()
         self.root.value = len(y_cat)
@@ -79,7 +78,7 @@ class BatchSearch(Tree):
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
-        if update:
+        if self.adaptive:
             root = self.huffman_build(self.partition)
             self.replace_root(root)
 

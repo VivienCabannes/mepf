@@ -1,15 +1,17 @@
 """
-Generic Search Tree
+Truncated Search Tree
 """
 import heapq
-from typing import List
 import numpy as np
-from .tree_constructors import Leaf, Node, Tree
+from ..binary_tree import Leaf, Node, Tree
 
 
-class SearchTree(Tree):
+class TruncatedSearch(Tree):
     """
-    Heuristic search implementation
+    Truncated search tree
+
+    This algorithm correspond to the heuristic version of the truncated search tree.
+    The one with guarantee can be implemented based on the BatchSearch class.
 
     Attributes
     ----------
@@ -75,31 +77,7 @@ class SearchTree(Tree):
             self.y_cat = np.arange(m, dtype=int)
             self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
 
-    def fine_identification(self, y: int, update: bool = True):
-        """
-        Get the precise label of y, and update the Huffman tree.
-
-        Parameters
-        ----------
-        y:
-            Class to update
-        update:
-            Wether to update the tree accordingly
-
-        See Also
-        --------
-        ExhausiveSearch
-        """
-        node = self.y2leaf[y]
-        self.nb_queries += node.depth
-        if update:
-            self._vitter_update(node)
-        else:
-            while node is not None:
-                node.value += 1
-                node = node.parent
-
-    def coarse_identification(self, y: int, epsilon: float = 0):
+    def __call__(self, y: int, epsilon: float = 0):
         """
         Get the coarse information on y, and update the partition.
 
@@ -110,15 +88,12 @@ class SearchTree(Tree):
         epsilon:
             Criterion on the biggest `p(S)` compared to `max p(y)`,
             for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
-
-        See Also
-        --------
-        TruncatedSearch
         """
 
         i = self.root.value
+
         # dynamic resizing of past history
-        if i == len(self.y_cat):
+        if hasattr(self, "y_observations") and i == len(self.y_cat):
             tmp = self.y_cat
             length = len(tmp)
             self.y_cat = np.zeros((2 * length), dtype=int)
@@ -141,41 +116,6 @@ class SearchTree(Tree):
             self.mode = node
 
         self._partition_rebalancing(epsilon)
-
-    def batch_identification(
-        self, y_cat: List[int], epsilon: float = 0, update: bool = True
-    ):
-        """
-        Find the emprical mode in a batch
-
-        Parameters
-        ----------
-        y_cat:
-            Batch observation
-        update:
-            Wether to update the tree accordingly
-        epsilon:
-            Criterion on the biggest `p(S)` compared to `max p(y)`,
-            for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
-
-        See Also
-        --------
-        BatchSearch
-        """
-        codes = self.get_codes()
-        self.root.value = len(y_cat)
-        setattr(self, "y_codes", codes[y_cat])
-        self.get_leaves_set(self.root)
-        self._refine_partition(epsilon)
-        delattr(self, "y_codes")
-
-        if update:
-            root = self.huffman_build(self.partition)
-            self.replace_root(root)
-
-            # update attributes
-            self.huffman_update()
-            self.partition_update()
 
     def _partition_rebalancing(self, epsilon: float):
         """
@@ -305,7 +245,7 @@ class SearchTree(Tree):
             self.nb_queries += node.ind.sum()
 
     def __repr__(self):
-        return f"SearchTree at {id(self)}"
+        return f"TruncatedSearch at {id(self)}"
 
     def _vitter_update(self, node):
         """

@@ -13,14 +13,14 @@ def test_batch_search(helpers):
     proba = sample_dirichlet(alpha, generator=rng)
     y_cat = rng.choice(m, size=n, p=proba)
 
-    model = BatchSearch(m)
-    model_bis = BatchSearch(m)
+    model = BatchSearch(m, adaptive=False)
+    model_bis = BatchSearch(m, adaptive=True)
 
     for i in range(50):
         helpers.reset_value(model)
         y_cat = rng.choice(m, size=n, p=proba)
 
-        model(y_cat, epsilon=0, update=False)
+        model(y_cat, epsilon=0)
 
         nb_queries = 0
         for node in model.partition:
@@ -48,7 +48,7 @@ def test_batch_search(helpers):
             node._i_huff = i
 
         helpers.reset_value(model_bis)
-        model_bis(y_cat, epsilon=0, update=True)
+        model_bis(y_cat, epsilon=0)
 
     out_str = '        Node: 100000                                                                                                     \n\x1b[1mLeaf 0: 42826\x1b[0m |                                         Node:  57174                                                     \n              |                 Node:  21675                  |                                         Node:  35499     \n              |     Node:      0      |     Node:      0      |                 Node:      0                  | \x1b[1mLeaf 1: 0\x1b[0m\n              | \x1b[1mLeaf 4: 0\x1b[0m | \x1b[1mLeaf 8: 0\x1b[0m | \x1b[1mLeaf 6: 0\x1b[0m | \x1b[1mLeaf 2: 0\x1b[0m |     Node:      0      |     Node:      0      |          \n              |                                               | \x1b[1mLeaf 7: 0\x1b[0m | \x1b[1mLeaf 9: 0\x1b[0m | \x1b[1mLeaf 3: 0\x1b[0m | \x1b[1mLeaf 5: 0\x1b[0m |          \n'
 
