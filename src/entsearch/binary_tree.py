@@ -54,7 +54,7 @@ class Leaf(Vertex):
             return f"Leaf(None) at {id(self)}"
         return f"Leaf({self.value:3d}) at {id(self)}"
 
-    def _get_print(self, _call=False, length=None):
+    def _get_print(self, length=None):
         if self.value is None:
             return [f"\033[1mLeaf {self.label}: None\033[0m"]
         return [f"\033[1mLeaf {self.label}: {self.value:d}\033[0m"]
@@ -118,14 +118,14 @@ class Node(Vertex):
             out += i + "\n"
         return out
 
-    def _get_print(self, _call: bool = True, length: int = 3):
-        left_print = self.left._get_print(_call=False, length=length)
-        right_print = self.right._get_print(_call=False, length=length)
+    def _get_print(self, length: int = 3):
+        left_print = self.left._get_print(length=length)
+        right_print = self.right._get_print(length=length)
         left_length, left_depth = len(left_print[0]), len(left_print)
         right_length, right_depth = len(right_print[0]), len(right_print)
-        if isinstance(self.left, Leaf):
+        if isinstance(self.left, Leaf) or isinstance(self.left, EliminatedNode):
             left_length -= 8
-        if isinstance(self.right, Leaf):
+        if isinstance(self.right, Leaf) or isinstance(self.right, EliminatedNode):
             right_length -= 8
         if self.value is None:
             current = " " * (left_length - 4)
@@ -148,6 +148,58 @@ class Node(Vertex):
                 current += " " * right_length
             out_print.append(current)
         return out_print
+
+
+class EliminatedNode(Vertex):
+    def __init__(self, eliminated_leaves: List[Vertex] = None):
+        Vertex.__init__(self)
+        self.children = []
+        self.value = 0
+        if eliminated_leaves is not None:
+            for child in eliminated_leaves:
+                self.add_child(child)
+
+    def add_child(self, child: Vertex):
+        self.children.append(child)
+        child.parent = self
+        if self.value is not None and child.value is not None:
+            self.value += child.value
+        else:
+            self.value = None
+
+    def update_depth(self, depth: int):
+        self.depth = depth
+
+    def get_max_depth(self):
+        return self.depth
+
+    def get_nb_leaves(self):
+        return len(self.children)
+
+    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
+        filled = False
+        for child in self.children:
+            if not filled:
+                codes[child.label] = prefix
+            else:
+                codes[child.label] = -1
+
+    def __repr__(self):
+        if self.value is None:
+            return f"EliminatedNode(None) at {id(self)}"
+        return f"EliminatedNode({self.value:3d}) at {id(self)}"
+
+    def __str__(self):
+        out = f'EliminatedNode: {self.value} \n'
+        for child in self.children:
+            out += child._get_print()[0] + ' | '
+        return out[:-3]
+
+    def _get_print(self, length=None, verbose=False):
+        label = [child.label for child in self.children]
+        if self.value is None:
+            return [f"\033[1mElim {label}: None\033[0m"]
+        return [f"\033[1mElim {label}: {self.value:d}\033[0m"]
 
 
 class Tree:

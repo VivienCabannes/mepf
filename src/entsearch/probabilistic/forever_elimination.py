@@ -3,7 +3,7 @@ Exhaustive Tree Search
 """
 import numpy as np
 
-from ..binary_tree import Leaf, Node, Tree
+from ..binary_tree import EliminatedNode, Leaf, Node, Tree
 
 
 class ForeverElimination(Tree):
@@ -44,7 +44,9 @@ class ForeverElimination(Tree):
 
         # initialize leaves mappings
         self.y2leaf = {i: Leaf(value=0, label=i) for i in range(m)}
+        self.y2node = {i: self.y2leaf[i] for i in range(m)}
         self.mode = self.y2leaf[0]
+        self.trash = EliminatedNode()
 
         # initialize the tree
         root = Tree.build_balanced_subtree(list(self.y2leaf.values()))
@@ -65,17 +67,19 @@ class ForeverElimination(Tree):
         y:
             Class to update
         """
+        # if we have already eliminated all nodes, we do nothing
         if self.eliminated.sum() == self.m - 1:
             return
 
-        # check if y is already eliminated.
-        if self.eliminated.any():
-            self.nb_queries += 1
-            if self.eliminated[y]:
-                return
-
-        node = self.y2leaf[y]
+        node = self.y2node[y]
         self.nb_queries += node.depth
+
+        # if y is already eliminated, we stop here
+        if isinstance(node, EliminatedNode):
+            node.value += 1
+            return
+
+        # update the tree
         if self.adaptive:
             self._vitter_update(node)
         else:
@@ -84,9 +88,11 @@ class ForeverElimination(Tree):
                 node = node.parent
             node = self.y2leaf[y]
 
+        # check for new mode
         if node.value > self.mode.value:
             self.mode = node
 
+        # check for elimination
         if self.delta:
             criterion = np.sqrt(self.mode.value) * 24 * self.log_delta
             criterion += self.mode.value
@@ -94,12 +100,16 @@ class ForeverElimination(Tree):
             remaining_node = []
             for i in range(self.m):
                 eliminated = self.eliminated[i]
-                if not eliminated and self.y2leaf[i].value < criterion:
+                node = self.y2leaf[i]
+                if not eliminated and node.value < criterion:
                     self.eliminated[i] = True
+                    self.trash.add_child(node)
+                    self.y2node[i] = self.trash
                     tree_change = True
-                else:
-                    remaining_node.append(self.y2leaf[i])
+                elif not eliminated:
+                    remaining_node.append(node)
             if tree_change:
+                remaining_node.append(self.trash)
                 root = Tree.huffman_build(remaining_node)
                 self.replace_root(root)
                 self.update_huffman_list()
@@ -210,52 +220,6 @@ class ForeverElimination(Tree):
         self.huffman_list = self.get_huffman_list()
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
-
-    def get_huffman_list(self):
-        """
-        Get the list of nodes in the order used to build the Huffman tree
-
-        Returns
-        -------
-        huffman_list : list of Nodes
-            The list of nodes in the order used to build the Huffman tree
-
-        Notes
-        -----
-        We do not do it during the `huffman_build` method due to inconsistent
-        ties breaking in the heap
-        """
-        codes = self.get_codes()[~self.eliminated]
-
-        # order codes by depth
-        depth = codes.shape[1] + 1
-        codes_per_depth = {i: set({}) for i in range(depth + 1)}
-        for code in codes:
-            current = ''
-            for char in code:
-                if char == -1:
-                    break
-                current += str(char)
-                codes_per_depth[len(current)].add(current)
-
-        # sort codes from left to right
-        sorted_nodes = []
-        for i in range(depth + 1):
-            sorted_nodes = sorted(codes_per_depth[i]) + sorted_nodes
-
-        # deduce huffman list
-        huffman_list = []
-        for code in sorted_nodes:
-            node = self.root
-            for char in code:
-                if char == '0':
-                    node = node.left
-                else:
-                    node = node.right
-            huffman_list.append(node)
-        huffman_list.append(self.root)
-
-        return huffman_list
 
     def get_leaves_set(self, node):
         """
