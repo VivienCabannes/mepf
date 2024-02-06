@@ -1,6 +1,6 @@
 import numpy as np
 
-from entsearch.search import SearchTree
+from entsearch import TruncatedSearch
 from entsearch.data import sample_dirichlet
 
 
@@ -13,12 +13,12 @@ def test_heuristic():
     proba = sample_dirichlet(alpha, generator=rng)
     y_cat = rng.choice(m, size=n, p=proba)
 
-    model = SearchTree(m, comeback=True)
-    finer_model = SearchTree(m, comeback=True)
+    model = TruncatedSearch(m, comeback=True)
+    finer_model = TruncatedSearch(m, comeback=True)
 
     for i, y in enumerate(y_cat):
-        model.coarse_identification(y, epsilon=0)
-        finer_model.coarse_identification(y, epsilon=1/m)
+        model(y, epsilon=0)
+        finer_model(y, epsilon=1/m)
         # finer_model.coarse_identification(y, epsilon=(i+1)**(-.5)/m)
 
         assert model.root.value == i + 1
