@@ -65,6 +65,9 @@ class ForeverElimination(Tree):
         y:
             Class to update
         """
+        if self.eliminated.sum() == self.m - 1:
+            return
+
         # check if y is already eliminated.
         if self.eliminated.any():
             self.nb_queries += 1
@@ -79,6 +82,8 @@ class ForeverElimination(Tree):
             while node is not None:
                 node.value += 1
                 node = node.parent
+            node = self.y2leaf[y]
+
         if node.value > self.mode.value:
             self.mode = node
 
@@ -97,6 +102,7 @@ class ForeverElimination(Tree):
             if tree_change:
                 root = Tree.huffman_build(remaining_node)
                 self.replace_root(root)
+                self.update_huffman_list()
 
     def __repr__(self):
         return f"ExhaustiveSearchTree at {id(self)}"
@@ -204,6 +210,52 @@ class ForeverElimination(Tree):
         self.huffman_list = self.get_huffman_list()
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
+
+    def get_huffman_list(self):
+        """
+        Get the list of nodes in the order used to build the Huffman tree
+
+        Returns
+        -------
+        huffman_list : list of Nodes
+            The list of nodes in the order used to build the Huffman tree
+
+        Notes
+        -----
+        We do not do it during the `huffman_build` method due to inconsistent
+        ties breaking in the heap
+        """
+        codes = self.get_codes()[~self.eliminated]
+
+        # order codes by depth
+        depth = codes.shape[1] + 1
+        codes_per_depth = {i: set({}) for i in range(depth + 1)}
+        for code in codes:
+            current = ''
+            for char in code:
+                if char == -1:
+                    break
+                current += str(char)
+                codes_per_depth[len(current)].add(current)
+
+        # sort codes from left to right
+        sorted_nodes = []
+        for i in range(depth + 1):
+            sorted_nodes = sorted(codes_per_depth[i]) + sorted_nodes
+
+        # deduce huffman list
+        huffman_list = []
+        for code in sorted_nodes:
+            node = self.root
+            for char in code:
+                if char == '0':
+                    node = node.left
+                else:
+                    node = node.right
+            huffman_list.append(node)
+        huffman_list.append(self.root)
+
+        return huffman_list
 
     def get_leaves_set(self, node):
         """
