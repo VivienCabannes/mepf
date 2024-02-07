@@ -1,12 +1,9 @@
 #### TODO
 
-Correct NYT introduction in our algorithm.
-
-Bandits algorithm
-- Write bandits algorithm.
-
 Evaluation
-- Write the algorithms as they appear exactly in the paper.
-- Doubling trick for the fixed tree search so to have a function t: num of queries -> estimated mode.
 
-- Add github action
+- launch experiements, check for delta correctness.
+
+Amelioration
+- implement the algorithm where we put back eliminated sets in the game. -> MEPF
+I.e. version with put-backs: add a counter for each node on the number of total knowledge. Call it time, and change the variable name on overleaf accordingly
