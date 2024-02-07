@@ -13,8 +13,8 @@ def test_heuristic():
     proba = sample_dirichlet(alpha, generator=rng)
     y_cat = rng.choice(m, size=n, p=proba)
 
-    model = TruncatedSearch(m, comeback=True)
-    finer_model = TruncatedSearch(m, comeback=True)
+    model = TruncatedSearch(m)
+    finer_model = TruncatedSearch(m)
 
     for i, y in enumerate(y_cat):
         model(y, epsilon=0)

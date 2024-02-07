@@ -35,7 +35,7 @@ class TruncatedSearch(Tree):
         List of weak observation of past samples.
     """
 
-    def __init__(self, m: int, comeback: bool = False):
+    def __init__(self, m: int):
         """
         Initialize the tree.
 
@@ -43,10 +43,6 @@ class TruncatedSearch(Tree):
         ----------
         m:
             Maximal number of potential class
-        comeback:
-            Wether to remember past information for future re-query
-        batch:
-            Wether we will find empirical mode in a batch
         """
         self.m = m
 
@@ -72,10 +68,9 @@ class TruncatedSearch(Tree):
         self.mode = self.y2node[0]
         self.nb_queries = 0
 
-        if comeback:
-            # remember past information for comeback
-            self.y_cat = np.arange(m, dtype=int)
-            self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
+        # remember past information for comeback
+        self.y_cat = np.arange(m, dtype=int)
+        self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
 
     def __call__(self, y: int, epsilon: float = 0):
         """
@@ -93,7 +88,7 @@ class TruncatedSearch(Tree):
         i = self.root.value
 
         # dynamic resizing of past history
-        if hasattr(self, "y_observations") and i == len(self.y_cat):
+        if i == len(self.y_cat):
             tmp = self.y_cat
             length = len(tmp)
             self.y_cat = np.zeros((2 * length), dtype=int)
@@ -105,6 +100,7 @@ class TruncatedSearch(Tree):
         # report observation
         node = self.y2node[y]
         self.nb_queries += node.depth
+
         self.y_cat[i] = y
         self.y_observations[i] = node._set_code
 
@@ -228,21 +224,17 @@ class TruncatedSearch(Tree):
         node.left.value = node.value - node.right.value
 
         rcode, lcode = node.right._set_code, node.left._set_code
-        # report nb_queries
-        if hasattr(self, "y_observations"):
-            # only queries for new information
-            y_obs = self.y_observations[: self.root.value]
-            right_unknown = y_obs[node.right.ind] & ~rcode
-            right_queries = (right_unknown.sum(axis=1) != 0).sum()
-            left_unknown = y_obs[node.left.ind] & ~lcode
-            left_queries = (left_unknown.sum(axis=1) != 0).sum()
-            self.nb_queries += right_queries + left_queries
-            # update observations
-            self.y_observations[: self.root.value][node.right.ind] &= rcode
-            self.y_observations[: self.root.value][node.left.ind] &= lcode
-        else:
-            # number of queries if we do not remember past information
-            self.nb_queries += node.ind.sum()
+
+        # only queries for new information
+        y_obs = self.y_observations[: self.root.value]
+        right_unknown = y_obs[node.right.ind] & ~rcode
+        right_queries = (right_unknown.sum(axis=1) != 0).sum()
+        left_unknown = y_obs[node.left.ind] & ~lcode
+        left_queries = (left_unknown.sum(axis=1) != 0).sum()
+        self.nb_queries += right_queries + left_queries
+        # update observations
+        self.y_observations[: self.root.value][node.right.ind] &= rcode
+        self.y_observations[: self.root.value][node.left.ind] &= lcode
 
     def __repr__(self):
         return f"TruncatedSearch at {id(self)}"

@@ -25,7 +25,7 @@ class BatchSearch(Tree):
         List of weak observation of past samples.
     """
 
-    def __init__(self, m: int, comeback: bool = False, adaptive: bool = True):
+    def __init__(self, m: int, adaptive: bool = True):
         """
         Initialize the tree.
 
@@ -33,8 +33,6 @@ class BatchSearch(Tree):
         ----------
         m:
             Maximal number of potential class
-        comeback:
-            Wether to remember past information for future re-query
         adaptive:
             Wether to update the tree online
         """
@@ -54,11 +52,6 @@ class BatchSearch(Tree):
         self.mode = y2leaf[0]
         self.nb_queries = 0
 
-        if comeback:
-            # remember past information for comeback
-            self.y_cat = np.arange(m, dtype=int)
-            self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
-
     def __call__(self, y_cat: List[int], epsilon: float = 0):
         """
         Find the emprical mode in a batch
@@ -74,7 +67,6 @@ class BatchSearch(Tree):
         codes = self.get_codes()
         self.root.value = len(y_cat)
         setattr(self, "y_codes", codes[y_cat])
-        self.get_leaves_set(self.root)
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
@@ -149,37 +141,8 @@ class BatchSearch(Tree):
         node.left.ind[node.ind] = ~pos_ind
         node.left.value = node.value - node.right.value
 
-        rcode, lcode = node.right._set_code, node.left._set_code
-
-        # report nb_queries
-        if hasattr(self, "y_observations"):
-            # only queries for new information
-            y_obs = self.y_observations[: self.root.value]
-            right_unknown = y_obs[node.right.ind] & ~rcode
-            right_queries = (right_unknown.sum(axis=1) != 0).sum()
-            left_unknown = y_obs[node.left.ind] & ~lcode
-            left_queries = (left_unknown.sum(axis=1) != 0).sum()
-            self.nb_queries += right_queries + left_queries
-            # update observations
-            self.y_observations[: self.root.value][node.right.ind] &= rcode
-            self.y_observations[: self.root.value][node.left.ind] &= lcode
-        else:
-            # number of queries if we do not remember past information
-            self.nb_queries += node.ind.sum()
+        # number of queries if we do not remember past information
+        self.nb_queries += node.ind.sum()
 
     def __repr__(self):
         return f"BatchSearch at {id(self)}"
-
-    def get_leaves_set(self, node):
-        """
-        Get list of leaf descendants labels and set codes.
-        """
-        if type(node) is Leaf:
-            y_set = [node.label]
-        else:
-            left_set = self.get_leaves_set(node.left)
-            right_set = self.get_leaves_set(node.right)
-            y_set = left_set + right_set
-        node._set_code = np.zeros(self.m, dtype=bool)
-        node._set_code[y_set] = 1
-        return y_set

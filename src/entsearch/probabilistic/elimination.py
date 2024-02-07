@@ -18,11 +18,15 @@ class ForeverElimination(Tree):
         Dictionary mapping each class to its partition node.
     huffman_list: list of Leaf
         List of all nodes in the order they were merged in the Huffman tree.
+    trash: EliminatedNode
+        Node to store eliminated nodes.
+    mode: Vertex
+        Current empirical mode at partition level.
     nb_queries: int
         Total number of queries made.
     """
 
-    def __init__(self, m: int, adaptive: bool = False, confidence_level: float = 0):
+    def __init__(self, m: int, confidence_level: float = 0, adaptive: bool = False):
         """
         Initialize the tree.
 
@@ -30,10 +34,10 @@ class ForeverElimination(Tree):
         ----------
         m:
             Maximal number of potential class
-        adaptive:
-            Wether to update the tree online
         confidence_level:
             Level of certitude require to eliminate guesses
+        adaptive:
+            Wether to update the tree online
         """
         self.m = m
         self.adaptive = adaptive
@@ -47,7 +51,6 @@ class ForeverElimination(Tree):
         # initialize leaves mappings
         self.y2leaf = {i: Leaf(value=0, label=i) for i in range(m)}
         self.y2node = {i: self.y2leaf[i] for i in range(m)}
-        self.mode = self.y2leaf[0]
         self.trash = EliminatedNode()
 
         # initialize the tree
@@ -58,6 +61,7 @@ class ForeverElimination(Tree):
         self.update_huffman_list()
 
         # initialize mode guess
+        self.mode = self.y2leaf[0]
         self.nb_queries = 0
 
     def __call__(self, y: int):
@@ -117,7 +121,7 @@ class ForeverElimination(Tree):
                 self.update_huffman_list()
 
     def __repr__(self):
-        return f"ExhaustiveSearchTree at {id(self)}"
+        return f"Elimination at {id(self)}"
 
     def _vitter_update(self, node):
         """
