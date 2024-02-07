@@ -5,3 +5,9 @@ from .deterministic import (
     ExhaustiveSearch,
     TruncatedSearch,
 )
+from .probabilistic import (
+    AdaptiveBatchElimination,
+    BatchElimination,
+    Elimination,
+    SetElimination,
+)

@@ -1,9 +1,12 @@
 import numpy as np
 
 from mepf.data import sample_dirichlet
-from mepf.probabilistic.elimination import Elimination
-from mepf.probabilistic.set import SetElimination
-from mepf.probabilistic.batch import BatchElimination
+from mepf import (
+    AdaptiveBatchElimination,
+    BatchElimination,
+    Elimination,
+    SetElimination,
+)
 
 rng = np.random.default_rng(seed=1000)
 
@@ -41,11 +44,16 @@ def test_forever_elimination(helpers):
         model(y_cat)
     nb_queries_best_batch = model.nb_queries
 
+    model = AdaptiveBatchElimination(m, confidence_level=level)
+    model(y_cat)
+    nb_adaptive_queries_batch = model.nb_queries
+
     assert nb_queries_dichotomic == 2555
     assert nb_queries_adaptive == 1198
     assert nb_queries_set == 1007
     assert nb_queries_batch == 3666
     assert nb_queries_best_batch == 1000
+    assert nb_adaptive_queries_batch == 1009
 
 
 if __name__ == '__main__':
