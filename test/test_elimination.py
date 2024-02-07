@@ -2,10 +2,10 @@ import numpy as np
 
 from mepf.data import sample_dirichlet
 from mepf import (
-    AdaptiveBatchElimination,
     BatchElimination,
     Elimination,
     SetElimination,
+    RoundFreeSetElimination,
 )
 
 rng = np.random.default_rng(seed=1000)
@@ -30,7 +30,7 @@ def test_forever_elimination(helpers):
         model(y)
     nb_queries_adaptive = model.nb_queries
 
-    model = SetElimination(m, confidence_level=level)
+    model = RoundFreeSetElimination(m, confidence_level=level)
     for y in y_cat:
         model(y)
     nb_queries_set = model.nb_queries
@@ -44,7 +44,7 @@ def test_forever_elimination(helpers):
         model(y_cat)
     nb_queries_best_batch = model.nb_queries
 
-    model = AdaptiveBatchElimination(m, confidence_level=level)
+    model = SetElimination(m, confidence_level=level)
     model(y_cat)
     nb_adaptive_queries_batch = model.nb_queries
 

@@ -1,13 +1,13 @@
 
 from .deterministic import (
-    AdaptiveBatchSearch,
     BatchSearch,
     ExhaustiveSearch,
+    RoundFreeTruncatedSearch,
     TruncatedSearch,
 )
 from .probabilistic import (
-    AdaptiveBatchElimination,
     BatchElimination,
     Elimination,
     SetElimination,
+    RoundFreeSetElimination,
 )

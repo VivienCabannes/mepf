@@ -2,9 +2,9 @@
 import numpy as np
 
 from mepf import (
-    AdaptiveBatchSearch,
     BatchSearch,
     ExhaustiveSearch,
+    RoundFreeTruncatedSearch,
     TruncatedSearch,
 )
 from mepf.data import sample_dirichlet
@@ -138,8 +138,8 @@ def test_truncated_search():
     proba = sample_dirichlet(alpha, generator=rng)
     y_cat = rng.choice(m, size=n, p=proba)
 
-    model = TruncatedSearch(m)
-    finer_model = TruncatedSearch(m)
+    model = RoundFreeTruncatedSearch(m)
+    finer_model = RoundFreeTruncatedSearch(m)
 
     for i, y in enumerate(y_cat):
         model(y, epsilon=0)
@@ -171,7 +171,7 @@ def test_adaptive_batch_search(helpers):
     proba = sample_dirichlet(alpha, generator=rng)
     y_cat = rng.choice(m, size=n, p=proba)
 
-    model = AdaptiveBatchSearch(m)
+    model = TruncatedSearch(m)
     model(y_cat)
     nb_queries = model.nb_queries
 
