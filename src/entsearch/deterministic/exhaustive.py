@@ -64,9 +64,6 @@ class ExhaustiveSearch(Tree):
                 node.value += 1
                 node = node.parent
 
-    def __repr__(self):
-        return f"ExhaustiveSearchTree at {id(self)}"
-
     def _vitter_update(self, node):
         """
         Update Huffman tree due to recent observation
@@ -119,6 +116,9 @@ class ExhaustiveSearch(Tree):
         self._vitter_update(parent)
 
     def _nyo_update(self, leaf):
+        """
+        Dealing with new observations
+        """
         # find parent with no observation
         node = leaf
         while node.parent is not None and node.parent.value == 0:
@@ -151,6 +151,9 @@ class ExhaustiveSearch(Tree):
         self._vitter_update(leaf.parent)
 
     def _swap(self, i_node, i_swap):
+        """
+        Swap two nodes in the Huffman tree.
+        """
         node = self.huffman_list[i_node]
         swapped = self.huffman_list[i_swap]
 
@@ -184,3 +187,6 @@ class ExhaustiveSearch(Tree):
         node._set_code = np.zeros(self.m, dtype=bool)
         node._set_code[y_set] = 1
         return y_set
+
+    def __repr__(self):
+        return f"ExhaustiveSearchTree at {id(self)}"

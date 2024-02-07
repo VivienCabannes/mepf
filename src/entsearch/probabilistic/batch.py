@@ -94,6 +94,11 @@ class BatchElimination(Tree):
         self.replace_root(root)
 
     def _refine_partition(self, epsilon: float):
+        """
+        Find current :math:`\eta`-admissible partition in the tree
+
+        Here, :math:`\eta = \max N(y) / 2 n - \epsilon`
+        """
         # we are splitting nodes
         self.root.ind = np.ones(self.root.value, dtype=bool)
         n_mode = None
@@ -116,7 +121,7 @@ class BatchElimination(Tree):
                 continue
 
             # if have reached our stop criterion, we stop
-            if n_mode is not None and node.value < n_mode - epsilon * n:
+            if n_mode is not None and node.value < n_mode / 2 - epsilon * n:
                 self.partition.append(node)
                 break
 

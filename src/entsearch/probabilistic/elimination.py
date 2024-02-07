@@ -122,9 +122,6 @@ class Elimination(Tree):
                 self.replace_root(root)
                 self.update_huffman_list()
 
-    def __repr__(self):
-        return f"Elimination at {id(self)}"
-
     def _vitter_update(self, node):
         """
         Update Huffman tree due to recent observation
@@ -177,6 +174,9 @@ class Elimination(Tree):
         self._vitter_update(parent)
 
     def _nyo_update(self, leaf):
+        """
+        Dealing with new observations
+        """
         # find parent with no observation
         node = leaf
         while node.parent is not None and node.parent.value == 0:
@@ -242,3 +242,6 @@ class Elimination(Tree):
         node._set_code = np.zeros(self.m, dtype=bool)
         node._set_code[y_set] = 1
         return y_set
+
+    def __repr__(self):
+        return f"Elimination at {id(self)}"

@@ -19,10 +19,6 @@ class BatchSearch(Tree):
         Current empirical mode at partition level.
     nb_queries: int
         Total number of queries made.
-    y_cat: np.ndarray
-        List of past samples.
-    y_observations: np.ndarray
-        List of weak observation of past samples.
     """
 
     def __init__(self, m: int, adaptive: bool = True):
@@ -75,6 +71,11 @@ class BatchSearch(Tree):
             self.replace_root(root)
 
     def _refine_partition(self, epsilon: float):
+        """
+        Find current :math:`\eta`-admissible partition in the tree
+
+        Here, :math:`\eta = \max N(y) / n - \epsilon`
+        """
         # we are splitting nodes
         self.root.ind = np.ones(self.root.value, dtype=bool)
         n_mode = None

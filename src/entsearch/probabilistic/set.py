@@ -171,11 +171,14 @@ class SetElimination(Tree):
         else:
             min1 = self.huffman_list[self._i_part].value
             min2 = self.huffman_list[self._i_part + 1].value
-            criterion = self.mode.value - epsilon * self.root.value
+            criterion = self.mode.value / 2 - epsilon * self.root.value
             if min1 + min2 < criterion:
                 self._merging(epsilon)
 
     def _splitting(self, epsilon: float):
+        """
+        Split elements of the current partition
+        """
         codes = self.get_codes()
         setattr(self, "y_codes", codes[self.y_cat[:self.root.value]])
         self.get_leaves_set(self.root)
@@ -183,6 +186,9 @@ class SetElimination(Tree):
         delattr(self, "y_codes")
 
     def _merging(self, epsilon: float):
+        """
+        Merge elements of the current partition
+        """
         # we run Huffman at the partition level
         root = self.huffman_build(self.partition)
         self.replace_root(root)
@@ -193,6 +199,11 @@ class SetElimination(Tree):
         self._refine_partition(epsilon)
 
     def _refine_partition(self, epsilon: float):
+        """
+        Find current :math:`\eta`-admissible partition in the tree
+
+        Here, :math:`\eta = \max N(y) / 2 n - \epsilon`
+        """
         if hasattr(self, "y_codes"):
             # we are splitting nodes
             self.root.ind = np.ones(self.root.value, dtype=bool)
@@ -210,7 +221,7 @@ class SetElimination(Tree):
             # get the node with the biggest value
             _, node = heapq.heappop(heap)
             # if have reached our stop criterion, we stop
-            if n_mode is not None and node.value < n_mode - epsilon * n:
+            if n_mode is not None and node.value < n_mode / 2 - epsilon * n:
                 self.partition.append(node)
                 break
             # the first leaf we find if the mode
@@ -276,9 +287,6 @@ class SetElimination(Tree):
         self.y_observations[:self.root.value][node.right.ind] &= rcode
         self.y_observations[:self.root.value][node.left.ind] &= lcode
 
-    def __repr__(self):
-        return f"SetElimination at {id(self)}"
-
     def _vitter_update(self, node):
         """
         Update Huffman tree due to recent observation
@@ -331,6 +339,9 @@ class SetElimination(Tree):
         self._vitter_update(parent)
 
     def _nyo_update(self, leaf):
+        """
+        Dealing with new observations
+        """
         # find parent with no observation
         node = leaf
         while node.parent is not None and node.parent.value == 0:
@@ -366,6 +377,9 @@ class SetElimination(Tree):
         self._vitter_update(leaf.parent)
 
     def _swap(self, i_node, i_swap):
+        """
+        Swap two nodes in the Huffman tree.
+        """
         node = self.huffman_list[i_node]
         swapped = self.huffman_list[i_swap]
 
@@ -424,3 +438,6 @@ class SetElimination(Tree):
         self.trash._set_code[y_set] = 1
         for y in y_set:
             self.y2node[y] = self.trash
+
+    def __repr__(self):
+        return f"SetElimination at {id(self)}"

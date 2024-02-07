@@ -137,6 +137,9 @@ class TruncatedSearch(Tree):
                 self._merging(epsilon)
 
     def _splitting(self, epsilon: float):
+        """
+        Split elements of the current partition
+        """
         codes = self.get_codes()
         setattr(self, "y_codes", codes[self.y_cat[: self.root.value]])
         self.get_leaves_set(self.root)
@@ -144,6 +147,9 @@ class TruncatedSearch(Tree):
         delattr(self, "y_codes")
 
     def _merging(self, epsilon: float):
+        """
+        Merge elements of the current partition
+        """
         # we run Huffman at the partition level
         root = self.huffman_build(self.partition)
         self.replace_root(root)
@@ -154,6 +160,11 @@ class TruncatedSearch(Tree):
         self._refine_partition(epsilon)
 
     def _refine_partition(self, epsilon: float):
+        """
+        Find current :math:`\eta`-admissible partition in the tree
+
+        Here, :math:`\eta = \max N(y) / n - \epsilon`
+        """
         if hasattr(self, "y_codes"):
             # we are splitting nodes
             self.root.ind = np.ones(self.root.value, dtype=bool)
@@ -291,6 +302,9 @@ class TruncatedSearch(Tree):
         self._vitter_update(parent)
 
     def _nyo_update(self, leaf):
+        """
+        Dealing with new observations
+        """
         # find parent with no observation
         node = leaf
         while node.parent is not None and node.parent.value == 0:
@@ -326,6 +340,9 @@ class TruncatedSearch(Tree):
         self._vitter_update(leaf.parent)
 
     def _swap(self, i_node, i_swap):
+        """
+        Swap two nodes in the Huffman tree.
+        """
         node = self.huffman_list[i_node]
         swapped = self.huffman_list[i_swap]
 
