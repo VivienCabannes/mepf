@@ -178,13 +178,17 @@ class EliminatedNode(Vertex):
 
     def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
         trash_prefix = np.full(prefix.shape, -1, prefix.dtype)
-        filled = False
-        for child in self.children:
-            if not filled:
-                codes[child.label] = prefix
-                filled = True
+        to_fill = self.children.copy()
+        while len(to_fill):
+            node = to_fill.pop()
+            if isinstance(node, Leaf):
+                node.fill_codes(trash_prefix, codes)
             else:
-                child.fill_codes(trash_prefix, codes)
+                to_fill.append(node.left)
+                to_fill.append(node.right)
+        if len(self.children):
+            assert isinstance(node, Leaf)
+            node.fill_codes(prefix, codes)
 
     def __repr__(self):
         if self.value is None:
@@ -193,11 +197,21 @@ class EliminatedNode(Vertex):
 
     def __str__(self):
         out = f'EliminatedNode: {self.value} \n'
-        for child in self.children:
-            out += child._get_print()[0] + ' | '
-        return out[:-3]
+        strs = [child._get_print() for child in self.children]
+        lengths = [len(i[0]) for i in strs]
+        lines_nb = max(len(i) for i in strs)
+        for i in range(lines_nb):
+            for j, tmp in enumerate(strs):
+                if tmp:
+                    cur = tmp.pop(0)
+                else:
+                    cur = ' ' * lengths[j]
+                out += cur + ' | '
+            out = out[:-3]
+            out += '\n'
+        return out
 
-    def _get_print(self, length=None, verbose=False):
+    def _get_print(self, length=None):
         label = self._get_label()
         if self.value is None:
             return [f"\033[1mElim {label}: None\033[0m"]
@@ -205,7 +219,7 @@ class EliminatedNode(Vertex):
 
     def _get_label(self):
         label = []
-        all_descendants = self.children
+        all_descendants = self.children.copy()
         while len(all_descendants) > 0:
             current = all_descendants.pop(0)
             if isinstance(current, Leaf):

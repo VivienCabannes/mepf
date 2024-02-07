@@ -6,7 +6,7 @@ import numpy as np
 from ..binary_tree import EliminatedNode, Leaf, Node, Tree
 
 
-class ForeverSetElimination(Tree):
+class SetElimination(Tree):
     """
     Forever Set Elimination
 
@@ -34,7 +34,7 @@ class ForeverSetElimination(Tree):
         List of weak observation of past samples.
     """
 
-    def __init__(self, m: int, confidence_level: float = 0):
+    def __init__(self, m: int, confidence_level: float = 1):
         """
         Initialize the tree.
 

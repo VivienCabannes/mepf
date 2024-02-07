@@ -6,7 +6,7 @@ import numpy as np
 from ..binary_tree import EliminatedNode, Leaf, Node, Tree
 
 
-class ForeverElimination(Tree):
+class Elimination(Tree):
     """
     Elimination Forever
 
@@ -26,7 +26,7 @@ class ForeverElimination(Tree):
         Total number of queries made.
     """
 
-    def __init__(self, m: int, confidence_level: float = 0, adaptive: bool = False):
+    def __init__(self, m: int, confidence_level: float = 1, adaptive: bool = False):
         """
         Initialize the tree.
 
@@ -115,6 +115,8 @@ class ForeverElimination(Tree):
                 elif not eliminated:
                     remaining_node.append(node)
             if tree_change:
+                if self.root.value == 769:
+                    pass
                 remaining_node.append(self.trash)
                 root = Tree.huffman_build(remaining_node)
                 self.replace_root(root)
