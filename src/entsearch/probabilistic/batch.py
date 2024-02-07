@@ -23,7 +23,7 @@ class BatchElimination(Tree):
         Node to store eliminated nodes.
     """
 
-    def __init__(self, m: int, confidence_level: float = 1):
+    def __init__(self, m: int, confidence_level: float = 1, constant: float = 24):
         """
         Initialize the tree.
 
@@ -33,18 +33,19 @@ class BatchElimination(Tree):
             Maximal number of potential class
         confidence_level:
             Level of certitude require to eliminate guesses
+        constant:
+            Constant to resize confidence intervals, default is 24.
         """
         self.m = m
 
         # elimination
         self.delta = 1 - confidence_level
-        if self.delta:
-            self.log_delta = np.log2(self.delta)
-        self.eliminated = np.zeros(m, dtype=bool)
+        self.constant = constant
 
         # initialize leaves mappings
         y2leaf = [Leaf(value=0, label=i) for i in range(m)]
         self.trash = EliminatedNode()
+        self.eliminated = np.zeros(m, dtype=bool)
 
         # initialize the tree
         root = Tree.build_balanced_subtree(y2leaf)
@@ -76,8 +77,9 @@ class BatchElimination(Tree):
         delattr(self, "y_codes")
 
         if self.delta:
-            criterion = np.sqrt(self.mode.value) * 24 * self.log_delta
-            criterion += self.mode.value
+            sigma = np.log(((np.pi * self.root.value) ** 2) * self.m / self.delta)
+            sigma = np.sqrt(self.constant * self.mode.value * sigma)
+            criterion = self.mode.value - sigma
             tree_change = False
             remaining_node = []
             for node in self.partition:
@@ -118,6 +120,7 @@ class BatchElimination(Tree):
 
             # we do not touch the eliminated set
             if isinstance(node, EliminatedNode):
+                self.partition.append(node)
                 continue
 
             # if have reached our stop criterion, we stop

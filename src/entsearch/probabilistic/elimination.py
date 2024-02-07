@@ -26,7 +26,7 @@ class Elimination(Tree):
         Total number of queries made.
     """
 
-    def __init__(self, m: int, confidence_level: float = 1, adaptive: bool = False):
+    def __init__(self, m: int, confidence_level: float = 1, constant: float = 24, adaptive: bool = False):
         """
         Initialize the tree.
 
@@ -36,6 +36,8 @@ class Elimination(Tree):
             Maximal number of potential class
         confidence_level:
             Level of certitude require to eliminate guesses
+        constant:
+            Constant to resize confidence intervals, default is 24.
         adaptive:
             Wether to update the tree online
         """
@@ -44,14 +46,13 @@ class Elimination(Tree):
 
         # elimination
         self.delta = 1 - confidence_level
-        if self.delta:
-            self.log_delta = np.log2(self.delta)
-        self.eliminated = np.zeros(m, dtype=bool)
+        self.constant = constant
 
         # initialize leaves mappings
         self.y2leaf = {i: Leaf(value=0, label=i) for i in range(m)}
         self.y2node = {i: self.y2leaf[i] for i in range(m)}
         self.trash = EliminatedNode()
+        self.eliminated = np.zeros(m, dtype=bool)
 
         # initialize the tree
         root = Tree.build_balanced_subtree(list(self.y2leaf.values()))
@@ -100,8 +101,9 @@ class Elimination(Tree):
 
         # check for elimination
         if self.delta:
-            criterion = np.sqrt(self.mode.value) * 24 * self.log_delta
-            criterion += self.mode.value
+            sigma = np.log(((np.pi * self.root.value) ** 2) * self.m / self.delta)
+            sigma = np.sqrt(self.constant * self.mode.value * sigma)
+            criterion = self.mode.value - sigma
             tree_change = False
             remaining_node = []
             for i in range(self.m):
@@ -115,8 +117,6 @@ class Elimination(Tree):
                 elif not eliminated:
                     remaining_node.append(node)
             if tree_change:
-                if self.root.value == 769:
-                    pass
                 remaining_node.append(self.trash)
                 root = Tree.huffman_build(remaining_node)
                 self.replace_root(root)
