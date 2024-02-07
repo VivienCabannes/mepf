@@ -1,4 +1,4 @@
 
-from .batch import BatchElimination
 from .elimination import Elimination
-from .set import SetElimination, RoundFreeSetElimination
+from .round_free import RoundFreeSetElimination
+from .set import BatchElimination, SetElimination

@@ -26,7 +26,7 @@ class Elimination(Tree):
         Total number of queries made.
     """
 
-    def __init__(self, m: int, confidence_level: float = 1, constant: float = 24, adaptive: bool = False):
+    def __init__(self, m: int, confidence_level: float = 1, constant: float = 24, adaptive: bool = True):
         """
         Initialize the tree.
 
