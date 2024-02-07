@@ -177,12 +177,14 @@ class EliminatedNode(Vertex):
         return len(self.children)
 
     def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
+        trash_prefix = np.full(prefix.shape, -1, prefix.dtype)
         filled = False
         for child in self.children:
             if not filled:
                 codes[child.label] = prefix
+                filled = True
             else:
-                codes[child.label] = -1
+                child.fill_codes(trash_prefix, codes)
 
     def __repr__(self):
         if self.value is None:
@@ -196,10 +198,22 @@ class EliminatedNode(Vertex):
         return out[:-3]
 
     def _get_print(self, length=None, verbose=False):
-        label = [child.label for child in self.children]
+        label = self._get_label()
         if self.value is None:
             return [f"\033[1mElim {label}: None\033[0m"]
         return [f"\033[1mElim {label}: {self.value:d}\033[0m"]
+
+    def _get_label(self):
+        label = []
+        all_descendants = self.children
+        while len(all_descendants) > 0:
+            current = all_descendants.pop(0)
+            if isinstance(current, Leaf):
+                label.append(current.label)
+            else:
+                all_descendants.append(current.left)
+                all_descendants.append(current.right)
+        return label
 
 
 class Tree:
