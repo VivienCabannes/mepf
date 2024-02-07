@@ -13,17 +13,10 @@ class Vertex:
         self.parent: Vertex = None
         self.depth: int = None
 
-    def delete_parent(self):
-        parent = self.parent
-        if parent is None:
-            return
-        parent.left = None
-        parent.right = None
-        parent.delete_parent()
-        self.parent = None
-        del parent
-
     def __lt__(self, other: Vertex):
+        """
+        Vitter order.
+        """
         # None value is seen a +inf
         if self.value is None:
             return False
@@ -44,12 +37,6 @@ class Leaf(Vertex):
         self.value = value
         self.label = label
 
-    def compute_value(self):
-        return
-
-    def reset_value(self):
-        self.value = None
-
     def update_depth(self, depth: int):
         self.depth = depth
 
@@ -67,7 +54,7 @@ class Leaf(Vertex):
             return f"Leaf(None) at {id(self)}"
         return f"Leaf({self.value:3d}) at {id(self)}"
 
-    def _get_print(self, _call=False, length=None):
+    def _get_print(self, length=None):
         if self.value is None:
             return [f"\033[1mLeaf {self.label}: None\033[0m"]
         return [f"\033[1mLeaf {self.label}: {self.value:d}\033[0m"]
@@ -85,20 +72,13 @@ class Node(Vertex):
             self.right = right
             self.left.parent = self
             self.right.parent = self
-        self.compute_value()
 
-    def compute_value(self):
         if self.left.value is None:
             self.value = None
         elif self.right.value is None:
             self.value = None
         else:
             self.value = self.left.value + self.right.value
-
-    def reset_value(self):
-        self.value = None
-        self.left.reset_value()
-        self.right.reset_value()
 
     def update_depth(self, depth: int):
         self.depth = depth
@@ -138,14 +118,14 @@ class Node(Vertex):
             out += i + "\n"
         return out
 
-    def _get_print(self, _call=True, length=3):
-        left_print = self.left._get_print(_call=False, length=length)
-        right_print = self.right._get_print(_call=False, length=length)
+    def _get_print(self, length: int = 3):
+        left_print = self.left._get_print(length=length)
+        right_print = self.right._get_print(length=length)
         left_length, left_depth = len(left_print[0]), len(left_print)
         right_length, right_depth = len(right_print[0]), len(right_print)
-        if isinstance(self.left, Leaf):
+        if isinstance(self.left, Leaf) or isinstance(self.left, EliminatedNode):
             left_length -= 8
-        if isinstance(self.right, Leaf):
+        if isinstance(self.right, Leaf) or isinstance(self.right, EliminatedNode):
             right_length -= 8
         if self.value is None:
             current = " " * (left_length - 4)
@@ -170,13 +150,90 @@ class Node(Vertex):
         return out_print
 
 
+class EliminatedNode(Vertex):
+    def __init__(self, eliminated_leaves: List[Vertex] = None):
+        Vertex.__init__(self)
+        self.children = []
+        self.value = 0
+        if eliminated_leaves is not None:
+            for child in eliminated_leaves:
+                self.add_child(child)
+
+    def add_child(self, child: Vertex):
+        self.children.append(child)
+        child.parent = self
+        if self.value is not None and child.value is not None:
+            self.value += child.value
+        else:
+            self.value = None
+
+    def update_depth(self, depth: int):
+        self.depth = depth
+
+    def get_max_depth(self):
+        return self.depth
+
+    def get_nb_leaves(self):
+        return len(self.children)
+
+    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
+        trash_prefix = np.full(prefix.shape, -1, prefix.dtype)
+        to_fill = self.children.copy()
+        while len(to_fill):
+            node = to_fill.pop()
+            if isinstance(node, Leaf):
+                node.fill_codes(trash_prefix, codes)
+            else:
+                to_fill.append(node.left)
+                to_fill.append(node.right)
+        if len(self.children):
+            assert isinstance(node, Leaf)
+            node.fill_codes(prefix, codes)
+
+    def __repr__(self):
+        if self.value is None:
+            return f"EliminatedNode(None) at {id(self)}"
+        return f"EliminatedNode({self.value:3d}) at {id(self)}"
+
+    def __str__(self):
+        out = f'EliminatedNode: {self.value} \n'
+        strs = [child._get_print() for child in self.children]
+        lengths = [len(i[0]) for i in strs]
+        lines_nb = max(len(i) for i in strs)
+        for i in range(lines_nb):
+            for j, tmp in enumerate(strs):
+                if tmp:
+                    cur = tmp.pop(0)
+                else:
+                    cur = ' ' * lengths[j]
+                out += cur + ' | '
+            out = out[:-3]
+            out += '\n'
+        return out
+
+    def _get_print(self, length=None):
+        label = self._get_label()
+        if self.value is None:
+            return [f"\033[1mElim {label}: None\033[0m"]
+        return [f"\033[1mElim {label}: {self.value:d}\033[0m"]
+
+    def _get_label(self):
+        label = []
+        all_descendants = self.children.copy()
+        while len(all_descendants) > 0:
+            current = all_descendants.pop(0)
+            if isinstance(current, Leaf):
+                label.append(current.label)
+            else:
+                all_descendants.append(current.left)
+                all_descendants.append(current.right)
+        return label
+
+
 class Tree:
-    def __init__(self, root: Node):
+    def __init__(self, root: Vertex):
         self.root = root
         self.root.update_depth(0)
-
-    def reset_value(self):
-        self.root.reset_value()
 
     def get_depth(self):
         return self.root.get_max_depth()
@@ -204,7 +261,7 @@ class Tree:
     def __str__(self):
         return self.root.__str__()
 
-    def replace_root(self, new_root: Node):
+    def replace_root(self, new_root: Vertex):
         root = self.root
         self.root = new_root
         self.root.update_depth(0)
@@ -248,30 +305,6 @@ class Tree:
             node2.update_depth(depth1)
 
     @staticmethod
-    def replace(node: Vertex, new: Vertex):
-        """
-        Replacing node by a new vertex
-
-        Parameters
-        ----------
-        node: Vertex
-            Vertex to delete
-        new: Vertex
-            New node
-
-        Notes
-        -----
-        Useful for HeuristicTree
-        """
-        if node.parent.left == node:
-            node.parent.left = new
-        elif node.parent.right == node:
-            node.parent.right = new
-        new.parent = node.parent
-        new.update_depth(node.depth)
-        del node
-
-    @staticmethod
     def huffman_build(nodes: List[Vertex]):
         """
         Build Huffman tree on top of nodes (seen as leaves)
@@ -292,6 +325,23 @@ class Tree:
             left, right = heapq.heappop(heap), heapq.heappop(heap)
             heapq.heappush(heap, Node(left, right))
         return heap[0]
+
+    @staticmethod
+    def build_balanced_subtree(nodes: List[Vertex]):
+        """
+        Build balanced subtree with specified vertex.
+        """
+        for node in nodes:
+            node.value = 1
+        root = Tree.huffman_build(nodes)
+        node_list = [root]
+        while len(node_list) > 0:
+            node = node_list.pop(0)
+            node.value = 0
+            if type(node) is Node:
+                node_list.append(node.left)
+                node_list.append(node.right)
+        return root
 
     def get_huffman_list(self):
         """
