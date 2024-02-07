@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "entsearch"
+name = "mepf"
 version = "0.0.1"
-description = "Mode search through entropic coding."
+description = "Mode Estimation with Partial Feedback."
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
@@ -14,7 +14,5 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numba",
     "numpy",
-    "scipy",
 ]

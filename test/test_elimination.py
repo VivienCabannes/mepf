@@ -1,9 +1,9 @@
 import numpy as np
 
-from entsearch.data import sample_dirichlet
-from entsearch.probabilistic.elimination import Elimination
-from entsearch.probabilistic.set import SetElimination
-from entsearch.probabilistic.batch import BatchElimination
+from mepf.data import sample_dirichlet
+from mepf.probabilistic.elimination import Elimination
+from mepf.probabilistic.set import SetElimination
+from mepf.probabilistic.batch import BatchElimination
 
 rng = np.random.default_rng(seed=1000)
 

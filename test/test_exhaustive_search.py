@@ -1,8 +1,8 @@
 
 import numpy as np
 
-from entsearch import ExhaustiveSearch
-from entsearch.data import sample_dirichlet
+from mepf import ExhaustiveSearch
+from mepf.data import sample_dirichlet
 
 
 def test_exhaustive_search(helpers):

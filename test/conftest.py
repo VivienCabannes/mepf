@@ -1,6 +1,6 @@
 import pytest
 
-from entsearch.binary_tree import Node
+from mepf.binary_tree import Node
 
 
 class Helper:

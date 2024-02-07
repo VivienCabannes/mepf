@@ -1,7 +1,7 @@
 import numpy as np
 
-from entsearch import BatchSearch
-from entsearch.data import sample_dirichlet
+from mepf import BatchSearch
+from mepf.data import sample_dirichlet
 
 
 def test_batch_search(helpers):

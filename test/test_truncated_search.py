@@ -1,7 +1,7 @@
 import numpy as np
 
-from entsearch import TruncatedSearch
-from entsearch.data import sample_dirichlet
+from mepf import TruncatedSearch
+from mepf.data import sample_dirichlet
 
 
 def test_heuristic():
