@@ -83,6 +83,8 @@ class BatchElimination(Tree):
             tree_change = False
             remaining_node = []
             for node in self.partition:
+                if isinstance(node, EliminatedNode):
+                    continue
                 if node.value < criterion:
                     self.trash.add_child(node)
                     tree_change = True
