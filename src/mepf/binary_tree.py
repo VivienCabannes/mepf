@@ -160,12 +160,43 @@ class EliminatedNode(Vertex):
                 self.add_child(child)
 
     def add_child(self, child: Vertex):
-        self.children.append(child)
-        child.parent = self
+        # update value
         if self.value is not None and child.value is not None:
             self.value += child.value
         else:
             self.value = None
+        # remove duplicate
+        real_children = self.remove_duplicates(child)
+        # add children
+        for child in real_children:
+            self.children.append(child)
+            child.parent = self
+
+    @staticmethod
+    def remove_duplicates(child: Vertex):
+        # find if trash is in the descendent
+        all_descendants = [child]
+        duplicate = False
+        while len(all_descendants) > 0:
+            current = all_descendants.pop(0)
+            if isinstance(current, EliminatedNode):
+                duplicate = True
+                break
+            elif isinstance(current, Node):
+                all_descendants.append(current.left)
+                all_descendants.append(current.right)
+        # if no duplicate, there is no problem
+        if not duplicate:
+            return [child]
+        # if there is a duplicate, we need to remove it
+        real_children = []
+        while current != child:
+            if current.parent.left == current:
+                real_children.append(current.parent.right)
+            else:
+                real_children.append(current.parent.left)
+            current = current.parent
+        return real_children
 
     def update_depth(self, depth: int):
         self.depth = depth
@@ -183,6 +214,8 @@ class EliminatedNode(Vertex):
             node = to_fill.pop()
             if isinstance(node, Leaf):
                 node.fill_codes(trash_prefix, codes)
+            elif isinstance(node, EliminatedNode):
+                pass
             else:
                 to_fill.append(node.left)
                 to_fill.append(node.right)
@@ -224,6 +257,8 @@ class EliminatedNode(Vertex):
             current = all_descendants.pop(0)
             if isinstance(current, Leaf):
                 label.append(current.label)
+            elif isinstance(current, EliminatedNode):
+                pass
             else:
                 all_descendants.append(current.left)
                 all_descendants.append(current.right)

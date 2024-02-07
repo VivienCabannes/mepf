@@ -113,10 +113,6 @@ class BatchElimination(Tree):
         heapq.heappush(heap, (-self.root.value, self.root))
         self.partition = []
         while len(heap) > 0:
-            if not self.trash.children:
-                pass
-            if self.trash.children:
-                pass
             # get the node with the biggest value
             _, node = heapq.heappop(heap)
 
@@ -252,7 +248,7 @@ class SetElimination:
         return self.back_end.nb_queries
 
     def __repr__(self):
-        return f"TruncatedBatchSearch at {id(self)}"
+        return f"TruncatedBatchElimination at {id(self)}"
 
     def __str__(self):
         return self.back_end.__str__()
