@@ -72,9 +72,9 @@ class BatchSearch(Tree):
 
     def _refine_partition(self, epsilon: float):
         """
-        Find current :math:`\eta`-admissible partition in the tree
+        Find current :math:`\\eta`-admissible partition in the tree
 
-        Here, :math:`\eta = \max N(y) / n - \epsilon`
+        Here, :math:`\\eta = \\max N(y) / n - \\epsilon`
         """
         # we are splitting nodes
         self.root.ind = np.ones(self.root.value, dtype=bool)
