@@ -187,7 +187,7 @@ if __name__ == "__main__":
             "two",
             "geometric",
         ],
-        default=["dirichlet"],
+        default="dirichlet",
         help="problem to solve",
     )
     parser.add_argument(
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
     # Interactive mode
     if config.interactive:
-        res = experiments(config)
+        res = experiments(config, seed=0)
         print("Results:")
         for k, v in res.items():
             print("\t", k, v)
@@ -237,8 +237,7 @@ if __name__ == "__main__":
 
     grid = {
         "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
-        # "problem": ["dirichlet", "one", "two", "geometric"],
-        "problem": ["one", "two", "geometric"],
+        "problem": ["dirichlet", "one", "two", "geometric"],
         "num_class": [3, 10, 30, 100, 300, 1000],
         "delta": [2 ** -i for i in range(1, 10)],
         "constant": [0.5, 1, 3, 10, 24],
@@ -270,13 +269,12 @@ if __name__ == "__main__":
         # Running experiment
         num_exp = int(np.ceil(10 / config.delta))
         for seed in range(num_exp):
-            res = experiments(config, seed)
-            # try:
-            #     res = experiments(config, seed)
-            # except Exception as e:
-            #     logger.warning(f"Error for configuration: {config}")
-            #     logger.warning(e)
-            #     continue
+            try:
+                res = experiments(config, seed)
+            except Exception as e:
+                logger.warning(f"Error for configuration: {config}")
+                logger.warning(e)
+                continue
 
             # Saving results
             with open(outfile, "a") as f:

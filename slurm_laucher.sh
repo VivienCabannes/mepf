@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # Logging configuration
-#SBATCH --job-name=bandit
+#SBATCH --job-name=mepf
 #SBATCH --output=/checkpoint/vivc/mepf/exp-%a.out
 #SBATCH --error=/checkpoint/vivc/mepf/exp-%a.err
 #SBATCH --mail-type=END
@@ -18,4 +18,4 @@
 #SBATCH --array=1-500
 
 
-python /private/home/vivc/code/entropicsearch/src/mepf/experiments/grid_script.py --num-tasks $SLURM_ARRAY_TASK_COUNT --task-id $SLURM_ARRAY_TASK_ID --save-dir /checkpoint/vivc/bandits
+python /private/home/vivc/code/entropicsearch/src/mepf/experiments/grid_script.py --num-tasks $SLURM_ARRAY_TASK_COUNT --task-id $SLURM_ARRAY_TASK_ID --save-dir /checkpoint/vivc/mepf
