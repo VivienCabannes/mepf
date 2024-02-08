@@ -1,9 +1,8 @@
 #### TODO
 
 Evaluation
-
-- launch experiements, check for delta correctness.
-- For set elimination, we can restrict the number of queries to be smaller than the one of truncated search before stopping the algorithm.
+- check for delta correctness
+- take the best run and look at expected value for T.
 
 Amelioration
 - implement the algorithm where we put back eliminated sets in the game. -> MEPF

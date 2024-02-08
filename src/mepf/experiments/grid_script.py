@@ -42,7 +42,7 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
             proba = geometric(m)
     proba = rng.permutation(proba)
     n_data = nb_data_required(proba, delta)
-    if n_data >= 10_000:
+    if n_data >= 50_000:
         return None, n_data, None
     query_lim = int(np.floor(np.log2(m) * n_data))
     y_cat = rng.choice(m, size=query_lim, p=proba)
@@ -52,8 +52,13 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
 def experiments(config, seed):
     rng = np.random.default_rng(seed)
     y_cat, n_data, proba = generate_problem(config.num_classes, config.problem, config.delta, rng)
-    if n_data >= 10_000:
-        return {'n_data': n_data, 'seed': seed, 'm': config.num_classes, 'method': config.method}
+    if n_data >= 50_000:
+        return {
+            'n_data': n_data,
+            'problem': config.problem,
+            'm': config.num_classes,
+            'delta': config.delta,
+        }
     m = len(proba)
 
     match config.method:
@@ -236,11 +241,11 @@ if __name__ == "__main__":
         sys.exit(0)
 
     grid = {
-        "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
+        "method": ["ES", "AS", "TS", "HTS", "E", "SE"],
         "problem": ["dirichlet", "one", "two", "geometric"],
-        "num_class": [3, 10, 30, 100, 300, 1000],
+        "num_classes": [3, 10, 30, 100, 300, 1000],
         "delta": [2 ** -i for i in range(1, 10)],
-        "constant": [0.5, 1, 3, 10, 24],
+        "constant": [0.1, 0.3, 1, 3, 10, 24],
     }
 
     logger.info(
@@ -264,7 +269,7 @@ if __name__ == "__main__":
         # Output file
         outdir = Path(config.save_dir) / config.method / config.problem
         outdir.mkdir(parents=True, exist_ok=True)
-        outfile = outdir / f"worker_{config.task_id}"
+        outfile = outdir / f"worker_{config.task_id}.jsonl"
 
         # Running experiment
         num_exp = int(np.ceil(10 / config.delta))
