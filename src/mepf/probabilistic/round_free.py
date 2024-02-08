@@ -32,6 +32,11 @@ class RoundFreeSetElimination(Tree):
         List of past samples.
     y_observations: np.ndarray
         List of weak observation of past samples.
+
+    Notes
+    -----
+    There is a small bug that is highly unlikely to happen, due to Vitter rebalancing at the partition level.
+    We should be treated nodes in the partition as leaves according to the Vitter ordering, which could create a bug.
     """
 
     def __init__(self, m: int, confidence_level: float = 1, constant: float = 24, gamma: float = .5):
@@ -118,9 +123,8 @@ class RoundFreeSetElimination(Tree):
         self.y_cat[i] = y
         self.y_observations[i] = node.get_set_code(self.m)
 
-        # special behavior if y is already eliminated
-        if self.eliminated[y]:
-            assert node == self.trash
+        # special behavior for the trash set
+        if isinstance(node, EliminatedNode):
             node.value += 1
             while node.parent is not None:
                 node = node.parent
@@ -156,6 +160,8 @@ class RoundFreeSetElimination(Tree):
                         self.trash.children += [self.y2leaf[i] for i in labels]
                         self.trash.value += node.value
                     self.eliminated[labels] = True
+                    for label in labels:
+                        self.y2node[label] = self.trash
                     tree_change = True
                 else:
                     remaining_node.append(node)

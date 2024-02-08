@@ -120,13 +120,12 @@ def arithmetic(m):
     return proba
 
 
-def nb_data_required(proba, confidence_level):
+def nb_data_required(proba, delta):
     """
     Number of data require to get a confidence level according to Sanov theorem.
     """
     tmp = -np.partition(-proba, 2)[:2]
     diff = np.sqrt(tmp[0]) - np.sqrt(tmp[1])
     sanov_exp = - np.log(1 - diff ** 2)
-    delta = 1 - confidence_level
     nb_data = - np.log(delta) / sanov_exp
     return int(np.ceil(nb_data))
