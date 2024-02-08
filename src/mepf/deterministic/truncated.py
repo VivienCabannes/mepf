@@ -218,4 +218,3 @@ class TruncatedSearch:
 
     def __str__(self):
         return self.back_end.__str__()
-

@@ -45,6 +45,7 @@ class ExhaustiveSearch(Tree):
 
         # initialize mode guess
         self.nb_queries = 0
+        self.mode = self.y2leaf[0]
 
     def __call__(self, y: int):
         """
@@ -63,6 +64,10 @@ class ExhaustiveSearch(Tree):
             while node is not None:
                 node.value += 1
                 node = node.parent
+            node = self.y2leaf[y]
+
+        if self.mode < node:
+            self.mode = node
 
     def _vitter_update(self, node):
         """

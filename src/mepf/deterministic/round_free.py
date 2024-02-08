@@ -58,11 +58,7 @@ class RoundFreeTruncatedSearch(Tree):
         self.partition = [root]
 
         # remember Huffman position
-        self.huffman_list = self.get_huffman_list()
-        for i, node in enumerate(self.huffman_list):
-            node._i_huff = i
-            node.value = 0
-        self.partition_update()
+        self.attribute_update()
 
         # initialize mode guess
         self.mode = self.y2node[0]
@@ -247,9 +243,6 @@ class RoundFreeTruncatedSearch(Tree):
         self.y_observations[: self.root.value][node.right.ind] &= rcode
         self.y_observations[: self.root.value][node.left.ind] &= lcode
 
-    def __repr__(self):
-        return f"TruncatedSearch at {id(self)}"
-
     def _vitter_update(self, node):
         """
         Update Huffman tree due to recent observation
@@ -355,6 +348,13 @@ class RoundFreeTruncatedSearch(Tree):
         # swap in the tree
         self.swap(node, swapped)
 
+    def attribute_update(self):
+        """
+        Update attributes.
+        """
+        self.huffman_update()
+        self.partition_update()
+
     def huffman_update(self):
         """
         Update model and nodes attributes to remember Huffman positions.
@@ -389,3 +389,6 @@ class RoundFreeTruncatedSearch(Tree):
         node._set_code = np.zeros(self.m, dtype=bool)
         node._set_code[y_set] = 1
         return y_set
+
+    def __repr__(self):
+        return f"TruncatedSearch at {id(self)}"

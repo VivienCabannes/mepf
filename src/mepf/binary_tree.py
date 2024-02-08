@@ -9,9 +9,18 @@ import numpy as np
 
 
 class Vertex:
+    """
+    Vertex object
+
+    Attributes
+    ----------
+    value: int
+        Empirical counts
+    """
     def __init__(self):
         self.parent: Vertex = None
         self.depth: int = None
+        self.value: int = None
 
     def __lt__(self, other: Vertex):
         """
@@ -32,6 +41,14 @@ class Vertex:
 
 
 class Leaf(Vertex):
+    """
+    Leaf object
+
+    Attributes
+    ----------
+    label: int
+        Class associated with this leaf
+    """
     def __init__(self, value: int = None, label: int = None):
         Vertex.__init__(self)
         self.value = value
@@ -48,6 +65,8 @@ class Leaf(Vertex):
 
     def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
         codes[self.label] = prefix
+        if hasattr(self, 'terminal'):
+            delattr(self, 'terminal')
 
     def __repr__(self):
         if self.value is None:
@@ -61,6 +80,14 @@ class Leaf(Vertex):
 
 
 class Node(Vertex):
+    """
+    Leaf object
+
+    Attributes
+    ----------
+    terminal: bool
+        Whether the node is a ``leaf'' at partition level (useful for Huffman rebalancing).
+    """
     def __init__(self, left: Vertex = None, right: Vertex = None):
         Vertex.__init__(self)
         if left is None:
@@ -73,11 +100,7 @@ class Node(Vertex):
             self.left.parent = self
             self.right.parent = self
 
-        if self.left.value is None:
-            self.value = None
-        elif self.right.value is None:
-            self.value = None
-        else:
+        if self.left.value is not None and self.right.value is not None:
             self.value = self.left.value + self.right.value
 
     def update_depth(self, depth: int):
@@ -99,13 +122,22 @@ class Node(Vertex):
             The prefix of the code.
         codes : ndarray of size (m, max_depth)
             The list of codes to be filled.
+
+        Notes
+        -----
+        If node is not active, the prefix indicates leaf at the partition level
         """
-        right_prefix = prefix.copy()
-        left_prefix = prefix.copy()
-        right_prefix[self.depth] = 1
-        left_prefix[self.depth] = 0
-        self.right.fill_codes(right_prefix, codes)
-        self.left.fill_codes(left_prefix, codes)
+        if hasattr(self, 'terminal'):
+            setattr(self.right, 'terminal', True)
+            self.right.fill_codes(prefix, codes)
+            delattr(self, 'terminal')
+        else:
+            right_prefix = prefix.copy()
+            left_prefix = prefix.copy()
+            right_prefix[self.depth] = 1
+            left_prefix[self.depth] = 0
+            self.right.fill_codes(right_prefix, codes)
+            self.left.fill_codes(left_prefix, codes)
 
     def __repr__(self):
         if self.value is None:
@@ -175,6 +207,7 @@ class EliminatedNode(Vertex):
     @staticmethod
     def remove_duplicates(child: Vertex):
         # find if trash is in the descendent
+        # useful when we have eliminated a superset that contain the eliminated set
         all_descendants = [child]
         duplicate = False
         while len(all_descendants) > 0:
@@ -208,20 +241,10 @@ class EliminatedNode(Vertex):
         return len(self.children)
 
     def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
-        trash_prefix = np.full(prefix.shape, -1, prefix.dtype)
-        to_fill = self.children.copy()
-        while len(to_fill):
-            node = to_fill.pop()
-            if isinstance(node, Leaf):
-                node.fill_codes(trash_prefix, codes)
-            elif isinstance(node, EliminatedNode):
-                pass
-            else:
-                to_fill.append(node.left)
-                to_fill.append(node.right)
-        if len(self.children):
-            assert isinstance(node, Leaf)
-            node.fill_codes(prefix, codes)
+        assert len(self.children) > 0
+        child = self.children[0]
+        setattr(child, 'terminal', True)
+        child.fill_codes(prefix, codes)
 
     def __repr__(self):
         if self.value is None:
@@ -245,12 +268,12 @@ class EliminatedNode(Vertex):
         return out
 
     def _get_print(self, length=None):
-        label = self._get_label()
+        label = self.get_descendant_labels()
         if self.value is None:
             return [f"\033[1mElim {label}: None\033[0m"]
         return [f"\033[1mElim {label}: {self.value:d}\033[0m"]
 
-    def _get_label(self):
+    def get_descendant_labels(self):
         label = []
         all_descendants = self.children.copy()
         while len(all_descendants) > 0:
@@ -286,7 +309,7 @@ class Tree:
             self.m = self.root.get_nb_leaves()
         length = self.get_depth()
         prefix = np.full(length, -1, dtype=int)
-        codes = np.zeros((self.m, length), dtype=int)
+        codes = np.full((self.m, length), -1, dtype=int)
         self.root.fill_codes(prefix, codes)
         return codes
 
@@ -389,8 +412,8 @@ class Tree:
 
         Notes
         -----
-        We do not do it during the `huffman_build` method due to inconsistent
-        ties breaking in the heap
+        We do not do it during the `huffman_build` method due to inconsistent ties breaking in the heap.
+        This method gives a sorted list where leaves are understood at the partition level.
         """
         codes = self.get_codes()
 

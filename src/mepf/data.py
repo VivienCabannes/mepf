@@ -45,7 +45,7 @@ def one_vs_all(m, p1):
     return proba
 
 
-def two_vs_all(m, p1, delta):
+def two_vs_all(m, p1, diff):
     """
     Distribution with two elements bigger than the rest
 
@@ -55,7 +55,7 @@ def two_vs_all(m, p1, delta):
         Number of elements
     p1 : float
         Probability of the first element
-    delta : float
+    diff : float
         Difference between the first and second element
 
     Returns
@@ -63,11 +63,11 @@ def two_vs_all(m, p1, delta):
     proba : array of shape (m,)
         Probability distribution
     """
-    p2 = p1 - delta
+    p2 = p1 - diff
     p3 = (1 - p1 - p2) / (m - 2)
     assert p1 > 1 / m, "p1 is too small to be the mode of m elements"
-    assert p2 > p3, "p1 - delta is too small to be the second biggest element"
-    assert p3 > 0, "1 - 2 * p1 + delta is negative"
+    assert p2 > p3, "p1 - diff is too small to be the second biggest element"
+    assert p3 > 0, "1 - 2 * p1 + diff is negative"
 
     proba = np.zeros(m)
     proba[:] = p3

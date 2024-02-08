@@ -70,6 +70,10 @@ class BatchElimination(Tree):
             Criterion on the biggest `p(S)` compared to `max p(y)`,
             for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
         """
+        # if we have already eliminated all nodes, we do nothing
+        if self.eliminated.sum() == self.m - 1:
+            return
+
         codes = self.get_codes()
         self.root.value = len(y_cat)
         setattr(self, "y_codes", codes[y_cat])
@@ -93,6 +97,7 @@ class BatchElimination(Tree):
             if tree_change:
                 remaining_node.append(self.trash)
                 self.partition = remaining_node
+                self.trash_update()
 
         root = self.huffman_build(self.partition)
         self.replace_root(root)
@@ -176,6 +181,28 @@ class BatchElimination(Tree):
 
         # number of queries
         self.nb_queries += node.ind.sum()
+
+    def get_leaves_set(self, node):
+        """
+        Get list of leaf descendants labels.
+        """
+        if type(node) is Leaf:
+            y_set = [node.label]
+        else:
+            left_set = self.get_leaves_set(node.left)
+            right_set = self.get_leaves_set(node.right)
+            y_set = left_set + right_set
+        return y_set
+
+    def trash_update(self):
+        """
+        Update eliminated nodes.
+        """
+        y_set = []
+        for child in self.trash.children:
+            y_set += self.get_leaves_set(child)
+        for y in y_set:
+            self.eliminated[y] = True
 
     def __repr__(self):
         return f"BatchElimination at {id(self)}"
