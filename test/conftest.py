@@ -13,6 +13,7 @@ class Helper:
             if type(node) is Node:
                 to_reset.append(node.left)
                 to_reset.append(node.right)
+        model.y_cat = None
 
 
 @pytest.fixture

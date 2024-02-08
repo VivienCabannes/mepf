@@ -48,6 +48,10 @@ class BatchSearch(Tree):
         self.mode = y2leaf[0]
         self.nb_queries = 0
 
+        # remember past information for comeback
+        self.y_cat = None
+        self.y_observations = None
+
     def __call__(self, y_cat: List[int], epsilon: float = 0):
         """
         Find the emprical mode in a batch
@@ -60,11 +64,19 @@ class BatchSearch(Tree):
             Criterion on the biggest `p(S)` compared to `max p(y)`,
             for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
         """
-        codes = self.get_codes()
-        self.root.value = len(y_cat)
-        setattr(self, "y_codes", codes[y_cat])
+        null_obs = np.ones((len(y_cat), self.m), dtype=bool)
+        if self.y_cat is None:
+            self.y_cat = y_cat.copy()
+            self.y_observations = null_obs
+        else:
+            self.y_cat = np.concatenate((self.y_cat, y_cat))
+            self.y_observations = np.concatenate((self.y_observations, null_obs))
+
+        self.root.value = len(self.y_cat)
+        self.root.ind = np.ones(self.root.value, dtype=bool)
+
+        self.y_codes = self.get_codes()[self.y_cat]
         self._refine_partition(epsilon)
-        delattr(self, "y_codes")
 
         if self.adaptive:
             root = self.huffman_build(self.partition)
@@ -103,7 +115,7 @@ class BatchSearch(Tree):
                 continue
 
             # make n_node queries to get children information
-            self._report_count(node, self.y_codes)
+            self._report_count(node)
 
             # push children in the heap
             # be careful that we need to inverse the order
@@ -117,7 +129,7 @@ class BatchSearch(Tree):
             _, node = heapq.heappop(heap)
             self.partition.append(node)
 
-    def _report_count(self, node, y_codes):
+    def _report_count(self, node):
         """
         Query observation to refine information at node level
 
@@ -125,14 +137,12 @@ class BatchSearch(Tree):
         ----------
         node: Node
             Node to refine observations
-        y_codes: numpy.ndarray of int of size (n, c)
-            Matrix of codes for each observed class
         """
         if node.value == 0:
             return
 
         # get child dispenser
-        pos_ind = y_codes[node.ind, node.depth] == 1
+        pos_ind = self.y_codes[node.ind, node.depth] == 1
 
         node.right.ind = node.ind.copy()
         node.right.ind[node.ind] = pos_ind
@@ -142,8 +152,20 @@ class BatchSearch(Tree):
         node.left.ind[node.ind] = ~pos_ind
         node.left.value = node.value - node.right.value
 
-        # number of queries if we do not remember past information
-        self.nb_queries += node.ind.sum()
+        rcode = node.right.get_set_code(self.m)
+        lcode = node.left.get_set_code(self.m)
+
+        # only queries for new information
+        y_obs = self.y_observations[: self.root.value]
+        right_unknown = y_obs[node.right.ind] & ~rcode
+        right_queries = (right_unknown.sum(axis=1) != 0).sum()
+        left_unknown = y_obs[node.left.ind] & ~lcode
+        left_queries = (left_unknown.sum(axis=1) != 0).sum()
+        self.nb_queries += right_queries + left_queries
+
+        # update observations
+        self.y_observations[: self.root.value][node.right.ind] &= rcode
+        self.y_observations[: self.root.value][node.left.ind] &= lcode
 
     def __repr__(self):
         return f"BatchSearch at {id(self)}"
@@ -218,4 +240,3 @@ class TruncatedSearch:
 
     def __str__(self):
         return self.back_end.__str__()
-

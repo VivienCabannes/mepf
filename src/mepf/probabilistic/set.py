@@ -23,7 +23,13 @@ class BatchElimination(Tree):
         Node to store eliminated nodes.
     """
 
-    def __init__(self, m: int, confidence_level: float = 1, constant: float = 24):
+    def __init__(
+        self,
+        m: int,
+        confidence_level: float = 1,
+        constant: float = 24,
+        gamma: float = 0.5,
+    ):
         """
         Initialize the tree.
 
@@ -41,22 +47,27 @@ class BatchElimination(Tree):
         # elimination
         self.delta = 1 - confidence_level
         self.constant = constant
+        self.gamma = gamma
 
         # initialize leaves mappings
-        y2leaf = [Leaf(value=0, label=i) for i in range(m)]
+        self.y2leaf = [Leaf(value=0, label=i) for i in range(m)]
         self.trash = EliminatedNode()
         self.eliminated = np.zeros(m, dtype=bool)
 
         # initialize the tree
-        root = Tree.build_balanced_subtree(y2leaf)
+        root = Tree.build_balanced_subtree(self.y2leaf)
         Tree.__init__(self, root)
 
         # initialize the partition
         self.partition = [root]
 
         # initialize mode guess
-        self.mode = y2leaf[0]
+        self.mode = self.y2leaf[0]
         self.nb_queries = 0
+
+        # remember past information for comeback
+        self.y_cat = None
+        self.y_observations = None
 
     def __call__(self, y_cat: List[int], epsilon: float = 0):
         """
@@ -70,28 +81,47 @@ class BatchElimination(Tree):
             Criterion on the biggest `p(S)` compared to `max p(y)`,
             for any non-singleton set :math:`p(S) < \\max_y p(y) - \\epsilon`
         """
-        codes = self.get_codes()
-        self.root.value = len(y_cat)
-        setattr(self, "y_codes", codes[y_cat])
+        # if we have already eliminated all nodes, we do nothing
+        if self.eliminated.sum() == self.m - 1:
+            return
+
+        null_obs = np.ones((len(y_cat), self.m), dtype=bool)
+        if self.y_cat is None:
+            self.y_cat = y_cat.copy()
+            self.y_observations = null_obs
+        else:
+            self.y_cat = np.concatenate((self.y_cat, y_cat))
+            self.y_observations = np.concatenate((self.y_observations, null_obs))
+
+        self.root.value = len(self.y_cat)
+        self.root.ind = np.ones(self.root.value, dtype=bool)
+
+        self.y_codes = self.get_codes()[self.y_cat]
         self._refine_partition(epsilon)
-        delattr(self, "y_codes")
 
         if self.delta:
             sigma = np.log(((np.pi * self.root.value) ** 2) * self.m / self.delta)
             sigma = np.sqrt(self.constant * self.mode.value * sigma)
             criterion = self.mode.value - sigma
             tree_change = False
-            remaining_node = []
+            remaining_node = [self.trash]
             for node in self.partition:
                 if isinstance(node, EliminatedNode):
                     continue
-                if node.value < criterion:
-                    self.trash.add_child(node)
+                elif node.value < criterion:
+                    labels = node.get_descendent_labels()
+                    # if the trash was nested in the newly eliminated set
+                    if self.eliminated[labels].any():
+                        self.trash.children = [self.y2leaf[i] for i in labels]
+                        self.trash.value = node.value
+                    else:
+                        self.trash.children += [self.y2leaf[i] for i in labels]
+                        self.trash.value += node.value
+                    self.eliminated[labels] = True
                     tree_change = True
                 else:
                     remaining_node.append(node)
             if tree_change:
-                remaining_node.append(self.trash)
                 self.partition = remaining_node
 
         root = self.huffman_build(self.partition)
@@ -104,7 +134,6 @@ class BatchElimination(Tree):
         Here, :math:`\\eta = \\max N(y) / 2 n - \\epsilon`
         """
         # we are splitting nodes
-        self.root.ind = np.ones(self.root.value, dtype=bool)
         n_mode = None
         n = self.root.value
 
@@ -122,7 +151,7 @@ class BatchElimination(Tree):
                 continue
 
             # if have reached our stop criterion, we stop
-            if n_mode is not None and node.value < n_mode / 2 - epsilon * n:
+            if n_mode is not None and node.value < n_mode * self.gamma - epsilon * n:
                 self.partition.append(node)
                 break
 
@@ -135,7 +164,7 @@ class BatchElimination(Tree):
                 continue
 
             # make n_node queries to get children information
-            self._report_count(node, self.y_codes)
+            self._report_count(node)
 
             # push children in the heap
             # be careful that we need to inverse the order
@@ -149,7 +178,7 @@ class BatchElimination(Tree):
             _, node = heapq.heappop(heap)
             self.partition.append(node)
 
-    def _report_count(self, node, y_codes):
+    def _report_count(self, node):
         """
         Query observation to refine information at node level
 
@@ -157,14 +186,12 @@ class BatchElimination(Tree):
         ----------
         node: Node
             Node to refine observations
-        y_codes: numpy.ndarray of int of size (n, c)
-            Matrix of codes for each observed class
         """
         if node.value == 0:
             return
 
         # get child dispenser
-        pos_ind = y_codes[node.ind, node.depth] == 1
+        pos_ind = self.y_codes[node.ind, node.depth] == 1
 
         node.right.ind = node.ind.copy()
         node.right.ind[node.ind] = pos_ind
@@ -172,10 +199,22 @@ class BatchElimination(Tree):
 
         node.left.ind = node.ind.copy()
         node.left.ind[node.ind] = ~pos_ind
-        node.left.value = node.value - node.right.value
+        node.left.value = np.sum(~pos_ind)
 
-        # number of queries
-        self.nb_queries += node.ind.sum()
+        rcode = node.right.get_set_code(self.m)
+        lcode = node.left.get_set_code(self.m)
+
+        # only queries for new information
+        y_obs = self.y_observations[: self.root.value]
+        right_unknown = y_obs[node.right.ind] & ~rcode
+        right_queries = (right_unknown.sum(axis=1) != 0).sum()
+        left_unknown = y_obs[node.left.ind] & ~lcode
+        left_queries = (left_unknown.sum(axis=1) != 0).sum()
+        self.nb_queries += right_queries + left_queries
+
+        # update observations
+        self.y_observations[: self.root.value][node.right.ind] &= rcode
+        self.y_observations[: self.root.value][node.left.ind] &= lcode
 
     def __repr__(self):
         return f"BatchElimination at {id(self)}"
@@ -207,7 +246,9 @@ class SetElimination:
             Constant to resize confidence intervals, default is 24.
         """
         self.m = m
-        self.back_end = BatchElimination(m, confidence_level=confidence_level, constant=constant)
+        self.back_end = BatchElimination(
+            m, confidence_level=confidence_level, constant=constant
+        )
         self.round = 0
 
     def get_scheduling(self, round):
@@ -215,7 +256,7 @@ class SetElimination:
         Scheduling of batch size and admissibility
         """
         epsilon = (2 / 3) ** round / (4 * self.m)
-        batch_size = 2 ** round
+        batch_size = 2**round
         return batch_size, epsilon
 
     def __call__(self, y_cat: List[int], epsilon: float = 0):

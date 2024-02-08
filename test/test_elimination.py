@@ -40,6 +40,7 @@ def test_forever_elimination(helpers):
     nb_queries_batch = model.nb_queries
     for i in range(10):
         helpers.reset_value(model)
+        model.eliminated[:] = False
         model.nb_queries = 0
         model(y_cat)
     nb_queries_best_batch = model.nb_queries
@@ -50,7 +51,7 @@ def test_forever_elimination(helpers):
 
     assert nb_queries_dichotomic == 2555
     assert nb_queries_adaptive == 1198
-    assert nb_queries_set == 1007
+    assert nb_queries_set == 1006
     assert nb_queries_batch == 3666
     assert nb_queries_best_batch == 1000
     assert nb_adaptive_queries_batch == 1009

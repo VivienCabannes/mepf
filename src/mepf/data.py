@@ -45,7 +45,7 @@ def one_vs_all(m, p1):
     return proba
 
 
-def two_vs_all(m, p1, delta):
+def two_vs_all(m, p1, diff):
     """
     Distribution with two elements bigger than the rest
 
@@ -55,7 +55,7 @@ def two_vs_all(m, p1, delta):
         Number of elements
     p1 : float
         Probability of the first element
-    delta : float
+    diff : float
         Difference between the first and second element
 
     Returns
@@ -63,11 +63,11 @@ def two_vs_all(m, p1, delta):
     proba : array of shape (m,)
         Probability distribution
     """
-    p2 = p1 - delta
+    p2 = p1 - diff
     p3 = (1 - p1 - p2) / (m - 2)
     assert p1 > 1 / m, "p1 is too small to be the mode of m elements"
-    assert p2 > p3, "p1 - delta is too small to be the second biggest element"
-    assert p3 > 0, "1 - 2 * p1 + delta is negative"
+    assert p2 > p3, "p1 - diff is too small to be the second biggest element"
+    assert p3 > 0, "1 - 2 * p1 + diff is negative"
 
     proba = np.zeros(m)
     proba[:] = p3
@@ -76,7 +76,7 @@ def two_vs_all(m, p1, delta):
     return proba
 
 
-def geometric(m, x):
+def geometric(m, x=2):
     """
     Geometric progression distribution
 
@@ -84,7 +84,7 @@ def geometric(m, x):
     ----------
     m : int
         Number of samples
-    x : float
+    x : float, default is 2
         Common ratio of the geometric progression
 
     Returns
@@ -99,7 +99,7 @@ def geometric(m, x):
     return proba
 
 
-def arithmetic(m, x):
+def arithmetic(m):
     """
     Arithmetic progression distribution
 
@@ -107,8 +107,6 @@ def arithmetic(m, x):
     ----------
     m : int
         Number of elements
-    x : float
-        Unnormalzed common difference
 
     Returns
     -------
@@ -116,7 +114,18 @@ def arithmetic(m, x):
         Probability distribution
     """
     proba = np.arange(m, dtype=float) + 1
-    proba *= -x
-    proba -= np.min(proba) - x
+    proba *= -1
+    proba -= np.min(proba) - 1
     proba /= proba.sum()
     return proba
+
+
+def nb_data_required(proba, delta):
+    """
+    Number of data require to get a confidence level according to Sanov theorem.
+    """
+    tmp = -np.partition(-proba, 2)[:2]
+    diff = np.sqrt(tmp[0]) - np.sqrt(tmp[1])
+    sanov_exp = - np.log(1 - diff ** 2)
+    nb_data = - np.log(delta) / sanov_exp
+    return int(np.ceil(nb_data))

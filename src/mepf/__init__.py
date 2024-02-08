@@ -1,4 +1,5 @@
 
+from .data import nb_data_required
 from .deterministic import (
     BatchSearch,
     ExhaustiveSearch,

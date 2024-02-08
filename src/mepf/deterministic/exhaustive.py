@@ -1,7 +1,6 @@
 """
 Exhaustive Tree Search
 """
-import numpy as np
 from ..binary_tree import Leaf, Node, Tree
 
 
@@ -45,6 +44,7 @@ class ExhaustiveSearch(Tree):
 
         # initialize mode guess
         self.nb_queries = 0
+        self.mode = self.y2leaf[0]
 
     def __call__(self, y: int):
         """
@@ -63,6 +63,10 @@ class ExhaustiveSearch(Tree):
             while node is not None:
                 node.value += 1
                 node = node.parent
+            node = self.y2leaf[y]
+
+        if self.mode < node:
+            self.mode = node
 
     def _vitter_update(self, node):
         """
@@ -124,7 +128,7 @@ class ExhaustiveSearch(Tree):
         while node.parent is not None and node.parent.value == 0:
             node = node.parent
 
-        leaves_set = set(self.get_leaves_set(node))
+        leaves_set = set(node.get_descendent_labels())
         leaves_set.remove(leaf.label)
         if len(leaves_set) > 1:
             grand_parent = node.parent
@@ -173,20 +177,6 @@ class ExhaustiveSearch(Tree):
         self.huffman_list = self.get_huffman_list()
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
-
-    def get_leaves_set(self, node):
-        """
-        Get list of leaf descendants labels and set codes.
-        """
-        if type(node) is Leaf:
-            y_set = [node.label]
-        else:
-            left_set = self.get_leaves_set(node.left)
-            right_set = self.get_leaves_set(node.right)
-            y_set = left_set + right_set
-        node._set_code = np.zeros(self.m, dtype=bool)
-        node._set_code[y_set] = 1
-        return y_set
 
     def __repr__(self):
         return f"ExhaustiveSearchTree at {id(self)}"

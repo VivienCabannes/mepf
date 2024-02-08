@@ -55,22 +55,18 @@ class RoundFreeTruncatedSearch(Tree):
         Tree.__init__(self, root)
 
         # initialize the partition
-        self.partition = [root]
+        self.partition = [self.y2leaf[i] for i in range(m)]
 
         # remember Huffman position
-        self.huffman_list = self.get_huffman_list()
-        for i, node in enumerate(self.huffman_list):
-            node._i_huff = i
-            node.value = 0
-        self.partition_update()
+        self.attribute_update()
 
         # initialize mode guess
         self.mode = self.y2node[0]
         self.nb_queries = 0
 
         # remember past information for comeback
-        self.y_cat = np.arange(m, dtype=int)
-        self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
+        self.y_cat = np.empty((0,), dtype=int)
+        self.y_observations = np.empty((0, self.m), dtype=bool)
 
     def __call__(self, y: int, epsilon: float = 0):
         """
@@ -91,10 +87,10 @@ class RoundFreeTruncatedSearch(Tree):
         if i == len(self.y_cat):
             tmp = self.y_cat
             length = len(tmp)
-            self.y_cat = np.zeros((2 * length), dtype=int)
+            self.y_cat = np.zeros(max([2 * length, 1]), dtype=int)
             self.y_cat[:length] = tmp
             tmp = self.y_observations
-            self.y_observations = np.zeros((2 * length, self.m), dtype=bool)
+            self.y_observations = np.zeros((max(2 * length, 1), self.m), dtype=bool)
             self.y_observations[:length] = tmp
 
         # report observation
@@ -102,7 +98,7 @@ class RoundFreeTruncatedSearch(Tree):
         self.nb_queries += node.depth
 
         self.y_cat[i] = y
-        self.y_observations[i] = node._set_code
+        self.y_observations[i] = node.get_set_code(self.m)
 
         # update the Huffman tree
         self._vitter_update(node)
@@ -142,7 +138,6 @@ class RoundFreeTruncatedSearch(Tree):
         """
         codes = self.get_codes()
         setattr(self, "y_codes", codes[self.y_cat[: self.root.value]])
-        self.get_leaves_set(self.root)
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
@@ -153,7 +148,6 @@ class RoundFreeTruncatedSearch(Tree):
         # we run Huffman at the partition level
         root = self.huffman_build(self.partition)
         self.replace_root(root)
-        self.huffman_update()
 
         # update the partition, using the node value
         assert not hasattr(self, "y_codes")
@@ -206,8 +200,8 @@ class RoundFreeTruncatedSearch(Tree):
             _, node = heapq.heappop(heap)
             self.partition.append(node)
 
-        # update the minimum partition node index
-        self.partition_update()
+        # update huffman and partition attributes
+        self.attribute_update()
 
     def _report_count(self, node, y_codes):
         """
@@ -234,7 +228,8 @@ class RoundFreeTruncatedSearch(Tree):
         node.left.ind[node.ind] = ~pos_ind
         node.left.value = node.value - node.right.value
 
-        rcode, lcode = node.right._set_code, node.left._set_code
+        rcode = node.right.get_set_code(self.m)
+        lcode = node.left.get_set_code(self.m)
 
         # only queries for new information
         y_obs = self.y_observations[: self.root.value]
@@ -243,12 +238,10 @@ class RoundFreeTruncatedSearch(Tree):
         left_unknown = y_obs[node.left.ind] & ~lcode
         left_queries = (left_unknown.sum(axis=1) != 0).sum()
         self.nb_queries += right_queries + left_queries
+
         # update observations
         self.y_observations[: self.root.value][node.right.ind] &= rcode
         self.y_observations[: self.root.value][node.left.ind] &= lcode
-
-    def __repr__(self):
-        return f"TruncatedSearch at {id(self)}"
 
     def _vitter_update(self, node):
         """
@@ -310,7 +303,7 @@ class RoundFreeTruncatedSearch(Tree):
         while node.parent is not None and node.parent.value == 0:
             node = node.parent
 
-        leaves_set = set(self.get_leaves_set(node))
+        leaves_set = set(node.get_descendent_labels())
         leaves_set.remove(leaf.label)
         if len(leaves_set) > 1:
             grand_parent = node.parent
@@ -331,10 +324,7 @@ class RoundFreeTruncatedSearch(Tree):
                 del node
 
             # update attributes
-            self.huffman_list = self.get_huffman_list()
-            for i, node in enumerate(self.huffman_list):
-                node._i_huff = i
-            self.partition_update()
+            self.attribute_update()
 
         leaf.value += 1
         self._vitter_update(leaf.parent)
@@ -355,11 +345,18 @@ class RoundFreeTruncatedSearch(Tree):
         # swap in the tree
         self.swap(node, swapped)
 
+    def attribute_update(self):
+        """
+        Update attributes.
+        """
+        self.huffman_update()
+        self.partition_update()
+
     def huffman_update(self):
         """
         Update model and nodes attributes to remember Huffman positions.
         """
-        self.huffman_list = self.get_huffman_list()
+        self.huffman_list = self.get_huffman_list(partition=True)
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
 
@@ -370,22 +367,11 @@ class RoundFreeTruncatedSearch(Tree):
         # update the partition dictionary
         self._i_part = np.inf
         for node in self.partition:
-            y_set = self.get_leaves_set(node)
+            y_set = node.get_descendent_labels()
             for y in y_set:
                 self.y2node[y] = node
             if self._i_part > node._i_huff:
                 self._i_part = node._i_huff
 
-    def get_leaves_set(self, node):
-        """
-        Get list of leaf descendants labels and set codes.
-        """
-        if type(node) is Leaf:
-            y_set = [node.label]
-        else:
-            left_set = self.get_leaves_set(node.left)
-            right_set = self.get_leaves_set(node.right)
-            y_set = left_set + right_set
-        node._set_code = np.zeros(self.m, dtype=bool)
-        node._set_code[y_set] = 1
-        return y_set
+    def __repr__(self):
+        return f"TruncatedSearch at {id(self)}"
