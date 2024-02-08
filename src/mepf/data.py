@@ -76,7 +76,7 @@ def two_vs_all(m, p1, diff):
     return proba
 
 
-def geometric(m, x):
+def geometric(m, x=2):
     """
     Geometric progression distribution
 
@@ -84,7 +84,7 @@ def geometric(m, x):
     ----------
     m : int
         Number of samples
-    x : float
+    x : float, default is 2
         Common ratio of the geometric progression
 
     Returns
@@ -99,7 +99,7 @@ def geometric(m, x):
     return proba
 
 
-def arithmetic(m, x):
+def arithmetic(m):
     """
     Arithmetic progression distribution
 
@@ -107,8 +107,6 @@ def arithmetic(m, x):
     ----------
     m : int
         Number of elements
-    x : float
-        Unnormalzed common difference
 
     Returns
     -------
@@ -116,7 +114,19 @@ def arithmetic(m, x):
         Probability distribution
     """
     proba = np.arange(m, dtype=float) + 1
-    proba *= -x
-    proba -= np.min(proba) - x
+    proba *= -1
+    proba -= np.min(proba) - 1
     proba /= proba.sum()
     return proba
+
+
+def nb_data_required(proba, confidence_level):
+    """
+    Number of data require to get a confidence level according to Sanov theorem.
+    """
+    tmp = -np.partition(-proba, 2)[:2]
+    diff = np.sqrt(tmp[0]) - np.sqrt(tmp[1])
+    sanov_exp = - np.log(1 - diff ** 2)
+    delta = 1 - confidence_level
+    nb_data = - np.log(delta) / sanov_exp
+    return int(np.ceil(nb_data))

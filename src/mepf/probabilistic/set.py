@@ -74,11 +74,15 @@ class BatchElimination(Tree):
         if self.eliminated.sum() == self.m - 1:
             return
 
-        codes = self.get_codes()
+        self.mode = None
         self.root.value = len(y_cat)
-        setattr(self, "y_codes", codes[y_cat])
+        self.root.ind = np.ones(self.root.value, dtype=bool)
+
+        self.y_codes = self.get_codes()[y_cat]
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
+
+        print(self)
 
         if self.delta:
             sigma = np.log(((np.pi * self.root.value) ** 2) * self.m / self.delta)
@@ -88,19 +92,21 @@ class BatchElimination(Tree):
             remaining_node = []
             for node in self.partition:
                 if isinstance(node, EliminatedNode):
-                    continue
-                if node.value < criterion:
+                    remaining_node.append(self.trash)
+                elif node.value < criterion:
                     self.trash.add_child(node)
                     tree_change = True
                 else:
                     remaining_node.append(node)
             if tree_change:
-                remaining_node.append(self.trash)
+                if not self.eliminated.any():
+                    remaining_node.append(self.trash)
                 self.partition = remaining_node
                 self.trash_update()
 
         root = self.huffman_build(self.partition)
         self.replace_root(root)
+        print(self)
 
     def _refine_partition(self, epsilon: float):
         """
@@ -109,7 +115,6 @@ class BatchElimination(Tree):
         Here, :math:`\\eta = \\max N(y) / 2 n - \\epsilon`
         """
         # we are splitting nodes
-        self.root.ind = np.ones(self.root.value, dtype=bool)
         n_mode = None
         n = self.root.value
 
@@ -177,7 +182,7 @@ class BatchElimination(Tree):
 
         node.left.ind = node.ind.copy()
         node.left.ind[node.ind] = ~pos_ind
-        node.left.value = node.value - node.right.value
+        node.left.value = np.sum(~pos_ind)
 
         # number of queries
         self.nb_queries += node.ind.sum()

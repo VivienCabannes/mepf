@@ -144,14 +144,15 @@ class RoundFreeSetElimination(Tree):
             remaining_node = []
             for node in self.partition:
                 if isinstance(node, EliminatedNode):
-                    continue
-                if node.value < criterion:
+                    remaining_node.append(self.trash)
+                elif node.value < criterion:
                     self.trash.add_child(node)
                     tree_change = True
                 else:
                     remaining_node.append(node)
             if tree_change:
-                remaining_node.append(self.trash)
+                if not self.eliminated.any():
+                    remaining_node.append(self.trash)
                 self.partition = remaining_node
                 root = Tree.huffman_build(self.partition)
                 self.replace_root(root)

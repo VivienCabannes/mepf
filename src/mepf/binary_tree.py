@@ -63,7 +63,7 @@ class Leaf(Vertex):
     def get_nb_leaves(self):
         return 1
 
-    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
+    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray, duplicate: bool = None):
         codes[self.label] = prefix
         if hasattr(self, 'terminal'):
             delattr(self, 'terminal')
@@ -114,7 +114,7 @@ class Node(Vertex):
     def get_nb_leaves(self):
         return self.left.get_nb_leaves() + self.right.get_nb_leaves()
 
-    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
+    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray, duplicate: bool = False):
         """
         Parameters
         ----------
@@ -122,15 +122,20 @@ class Node(Vertex):
             The prefix of the code.
         codes : ndarray of size (m, max_depth)
             The list of codes to be filled.
+        duplicate: bool, default is False
+            Wether to duplicate codes
 
         Notes
         -----
         If node is not active, the prefix indicates leaf at the partition level
         """
         if hasattr(self, 'terminal'):
+            delattr(self, 'terminal')
             setattr(self.right, 'terminal', True)
             self.right.fill_codes(prefix, codes)
-            delattr(self, 'terminal')
+            if duplicate:
+                setattr(self.left, 'terminal', True)
+                self.left.fill_codes(prefix, codes)
         else:
             right_prefix = prefix.copy()
             left_prefix = prefix.copy()
@@ -240,11 +245,14 @@ class EliminatedNode(Vertex):
     def get_nb_leaves(self):
         return len(self.children)
 
-    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray):
+    def fill_codes(self, prefix: np.ndarray, codes: np.ndarray, duplicate: bool = True):
         assert len(self.children) > 0
-        child = self.children[0]
-        setattr(child, 'terminal', True)
-        child.fill_codes(prefix, codes)
+        if duplicate:
+            for child in self.children:
+                setattr(child, 'terminal', True)
+                child.fill_codes(prefix, codes, duplicate=True)
+        else:
+            self.children[0].fill_codes(prefix, codes, duplicate=False)
 
     def __repr__(self):
         if self.value is None:
@@ -296,9 +304,14 @@ class Tree:
     def get_depth(self):
         return self.root.get_max_depth()
 
-    def get_codes(self):
+    def get_codes(self, duplicate: bool = True) -> np.ndarray:
         """
         Get the codes of the leaves associated with the tree
+
+        Parameters
+        ----------
+        duplicate : bool, default is False
+            Whether to duplicate the codes
 
         Returns
         -------
@@ -310,7 +323,7 @@ class Tree:
         length = self.get_depth()
         prefix = np.full(length, -1, dtype=int)
         codes = np.full((self.m, length), -1, dtype=int)
-        self.root.fill_codes(prefix, codes)
+        self.root.fill_codes(prefix, codes, duplicate=duplicate)
         return codes
 
     def __repr__(self):
@@ -415,7 +428,7 @@ class Tree:
         We do not do it during the `huffman_build` method due to inconsistent ties breaking in the heap.
         This method gives a sorted list where leaves are understood at the partition level.
         """
-        codes = self.get_codes()
+        codes = self.get_codes(duplicate=False)
 
         # order codes by depth
         depth = codes.shape[1] + 1
