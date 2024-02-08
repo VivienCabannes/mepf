@@ -56,8 +56,8 @@ nb_queries['truncated_search'] = model.nb_queries
 guesses['truncated_search'] = model.mode.label
 
 model = RoundFreeTruncatedSearch(m)
-for y in y_cat:
-    model(y)
+for i, y in enumerate(y_cat):
+    model(y, epsilon=(2 / 3) ** np.log2(i) / (4 * m))
 nb_queries['heuristic_truncated_search'] = model.nb_queries
 guesses['heuristic_truncated_search'] = model.mode.label
 
@@ -69,10 +69,10 @@ i = 0
 while model.eliminated.sum() < m - 1 and i < n:
     i += 1
     model(rng.choice(m, p=proba))
-print(model)
 nb_queries['elimination'] = model.nb_queries
 guesses['elimination'] = model.mode.label
 
+constant = 24
 error = 0
 for i in range(100):
     model = BatchElimination(m, confidence_level=confidence_level, constant=constant)
@@ -80,18 +80,20 @@ for i in range(100):
     while model.eliminated.sum() < m - 1:
         r += 1
         epsilon = (2 / 3) ** r / (4 * m)
-        y_cat = rng.choice(m, size=2**r, p=proba)
+        y_cat = rng.choice(m, size=2 ** r, p=proba)
         model(y_cat, epsilon=epsilon)
     nb_queries['set_elimination'] = model.nb_queries
     guesses['set_elimination'] = model.mode.label
     error += int(model.mode.label != np.argmax(proba))
 
 print('error', error)
-import sys
-sys.exit()
 
 model = RoundFreeSetElimination(m, confidence_level=confidence_level, constant=constant, gamma=.5)
+i = 0
 while model.eliminated.sum() < m - 1:
+    i += 1
+    if i == 49:
+        pass
     model(rng.choice(m, p=proba))
 print(model)
 nb_queries['round_free_set_elimination'] = model.nb_queries

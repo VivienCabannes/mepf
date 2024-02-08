@@ -14,8 +14,6 @@ class Elimination(Tree):
     ----------
     y2leaf: dict of int: Leaf
         Dictionary mapping each class to its corresponding leaf.
-    y2node: dict of int: Node
-        Dictionary mapping each class to its partition node.
     huffman_list: list of Leaf
         List of all nodes in the order they were merged in the Huffman tree.
     trash: EliminatedNode
@@ -50,7 +48,6 @@ class Elimination(Tree):
 
         # initialize leaves mappings
         self.y2leaf = {i: Leaf(value=0, label=i) for i in range(m)}
-        self.y2node = {i: self.y2leaf[i] for i in range(m)}
         self.trash = EliminatedNode()
         self.eliminated = np.zeros(m, dtype=bool)
 
@@ -78,13 +75,18 @@ class Elimination(Tree):
         if self.eliminated.sum() == self.m - 1:
             return
 
-        node = self.y2node[y]
-        self.nb_queries += node.depth
-
-        # if y is already eliminated, we stop here
-        if isinstance(node, EliminatedNode):
+        # special behavior if y is already eliminated
+        if self.eliminated[y]:
+            node = self.trash
+            self.nb_queries += node.depth
             node.value += 1
+            while node.parent is not None:
+                node = node.parent
+                node.value += 1
             return
+
+        node = self.y2leaf[y]
+        self.nb_queries += node.depth
 
         # update the tree
         if self.adaptive:
@@ -105,19 +107,19 @@ class Elimination(Tree):
             sigma = np.sqrt(self.constant * self.mode.value * sigma)
             criterion = self.mode.value - sigma
             tree_change = False
-            remaining_node = []
+            remaining_node = [self.trash]
             for i in range(self.m):
-                eliminated = self.eliminated[i]
                 node = self.y2leaf[i]
-                if not eliminated and node.value < criterion:
+                if self.eliminated[i]:
+                    continue
+                elif node.value < criterion:
                     self.eliminated[i] = True
-                    self.trash.add_child(node)
-                    self.y2node[i] = self.trash
+                    self.trash.children.append(node)
+                    self.trash.value += node.value
                     tree_change = True
-                elif not eliminated:
+                else:
                     remaining_node.append(node)
             if tree_change:
-                remaining_node.append(self.trash)
                 root = Tree.huffman_build(remaining_node)
                 self.replace_root(root)
                 self.update_huffman_list()
@@ -182,7 +184,7 @@ class Elimination(Tree):
         while node.parent is not None and node.parent.value == 0:
             node = node.parent
 
-        leaves_set = set(self.get_leaves_set(node))
+        leaves_set = set(node.get_descendent_labels())
         leaves_set.remove(leaf.label)
         if len(leaves_set) > 1:
             grand_parent = node.parent
@@ -229,19 +231,43 @@ class Elimination(Tree):
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
 
-    def get_leaves_set(self, node):
-        """
-        Get list of leaf descendants labels and set codes.
-        """
-        if type(node) is Leaf:
-            y_set = [node.label]
-        else:
-            left_set = self.get_leaves_set(node.left)
-            right_set = self.get_leaves_set(node.right)
-            y_set = left_set + right_set
-        node._set_code = np.zeros(self.m, dtype=bool)
-        node._set_code[y_set] = 1
-        return y_set
+    def get_huffman_list(self):
+        codes = self.get_codes()
+
+        if self.eliminated.any():
+            y_set = self.trash.get_descendent_labels()
+            codes[y_set] = -1
+            codes[y_set[0]] = self.trash.code
+
+        # order codes by depth
+        depth = codes.shape[1] + 1
+        codes_per_depth = {i: set({}) for i in range(depth + 1)}
+        for code in codes:
+            current = ''
+            for char in code:
+                if char == -1:
+                    break
+                current += str(char)
+                codes_per_depth[len(current)].add(current)
+
+        # sort codes from left to right
+        sorted_nodes = []
+        for i in range(depth + 1):
+            sorted_nodes = sorted(codes_per_depth[i]) + sorted_nodes
+
+        # deduce huffman list
+        huffman_list = []
+        for code in sorted_nodes:
+            node = self.root
+            for char in code:
+                if char == '0':
+                    node = node.left
+                else:
+                    node = node.right
+            huffman_list.append(node)
+        huffman_list.append(self.root)
+
+        return huffman_list
 
     def __repr__(self):
         return f"Elimination at {id(self)}"

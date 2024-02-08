@@ -116,10 +116,11 @@ class RoundFreeSetElimination(Tree):
         node = self.y2node[y]
         self.nb_queries += node.depth
         self.y_cat[i] = y
-        self.y_observations[i] = node._set_code
+        self.y_observations[i] = node.get_set_code(self.m)
 
-        # if y is already eliminated, we stop here
-        if isinstance(node, EliminatedNode):
+        # special behavior if y is already eliminated
+        if self.eliminated[y]:
+            assert node == self.trash
             node.value += 1
             while node.parent is not None:
                 node = node.parent
@@ -141,18 +142,24 @@ class RoundFreeSetElimination(Tree):
             sigma = np.sqrt(self.constant * self.mode.value * sigma)
             criterion = self.mode.value - sigma
             tree_change = False
-            remaining_node = []
+            remaining_node = [self.trash]
             for node in self.partition:
                 if isinstance(node, EliminatedNode):
-                    remaining_node.append(self.trash)
+                    continue
                 elif node.value < criterion:
-                    self.trash.add_child(node)
+                    labels = node.get_descendent_labels()
+                    # if the trash was nested in the newly eliminated set
+                    if self.eliminated[labels].any():
+                        self.trash.children = [self.y2leaf[i] for i in labels]
+                        self.trash.value = node.value
+                    else:
+                        self.trash.children += [self.y2leaf[i] for i in labels]
+                        self.trash.value += node.value
+                    self.eliminated[labels] = True
                     tree_change = True
                 else:
                     remaining_node.append(node)
             if tree_change:
-                if not self.eliminated.any():
-                    remaining_node.append(self.trash)
                 self.partition = remaining_node
                 root = Tree.huffman_build(self.partition)
                 self.replace_root(root)
@@ -187,7 +194,6 @@ class RoundFreeSetElimination(Tree):
         """
         codes = self.get_codes()
         setattr(self, "y_codes", codes[self.y_cat[:self.root.value]])
-        self.get_leaves_set(self.root)
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
@@ -288,7 +294,8 @@ class RoundFreeSetElimination(Tree):
         node.left.ind[node.ind] = ~pos_ind
         node.left.value = node.value - node.right.value
 
-        rcode, lcode = node.right._set_code, node.left._set_code
+        rcode = node.right.get_set_code(self.m)
+        lcode = node.left.get_set_code(self.m)
 
         # only queries for new information
         y_obs = self.y_observations[:self.root.value]
@@ -362,7 +369,7 @@ class RoundFreeSetElimination(Tree):
         while node.parent is not None and node.parent.value == 0:
             node = node.parent
 
-        leaves_set = set(self.get_leaves_set(node))
+        leaves_set = set(node.get_descendent_labels())
         leaves_set.remove(leaf.label)
         if len(leaves_set) > 1:
             grand_parent = node.parent
@@ -415,9 +422,7 @@ class RoundFreeSetElimination(Tree):
         """
         Update model and nodes attributes to remember Huffman positions.
         """
-        for node in self.partition:
-            setattr(node, "terminal", True)
-        self.huffman_list = self.get_huffman_list()
+        self.huffman_list = self.get_huffman_list(partition=True)
         for i, node in enumerate(self.huffman_list):
             node._i_huff = i
 
@@ -428,41 +433,11 @@ class RoundFreeSetElimination(Tree):
         # update the partition dictionary
         self._i_part = np.inf
         for node in self.partition:
-            y_set = self.get_leaves_set(node)
+            y_set = node.get_descendent_labels()
             for y in y_set:
                 self.y2node[y] = node
             if self._i_part > node._i_huff:
                 self._i_part = node._i_huff
-
-    def trash_update(self):
-        """
-        Get list of leaf descendants labels and set codes.
-        """
-        y_set = []
-        for child in self.trash.children:
-            y_set += self.get_leaves_set(child)
-        self.trash._set_code = np.zeros(self.m, dtype=bool)
-        self.trash._set_code[y_set] = 1
-        for y in y_set:
-            self.y2node[y] = self.trash
-            self.eliminated[y] = True
-        return y_set
-
-    def get_leaves_set(self, node):
-        """
-        Get list of leaf descendants labels and set codes.
-        """
-        if isinstance(node, Leaf):
-            y_set = [node.label]
-        elif isinstance(node, EliminatedNode):
-            y_set = self.trash_update()
-        else:
-            left_set = self.get_leaves_set(node.left)
-            right_set = self.get_leaves_set(node.right)
-            y_set = left_set + right_set
-        node._set_code = np.zeros(self.m, dtype=bool)
-        node._set_code[y_set] = 1
-        return y_set
 
     def __repr__(self):
         return f"SetElimination at {id(self)}"

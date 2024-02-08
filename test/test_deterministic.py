@@ -147,16 +147,16 @@ def test_truncated_search():
         # finer_model.coarse_identification(y, epsilon=(i+1)**(-.5)/m)
 
         assert model.root.value == i + 1
-        huffman_list = model.get_huffman_list()
+        huffman_list = model.get_huffman_list(partition=True)
         assert huffman_list[model._i_part:] == model.huffman_list[model._i_part:]
         old = huffman_list[model._i_part]
         for node in huffman_list[model._i_part + 1:]:
             assert not node < old
             old = node
 
-    out_str = "                                 Node: 1000                                                                                   \n                   Node:  434         |                                 Node:  566                                            \n      Node:  205        | \x1b[1mLeaf 0: 229\x1b[0m |                   Node:  256         |        Node:  310                              \n\x1b[1mLeaf 5: 38\x1b[0m | \x1b[1mLeaf 3: 63\x1b[0m |             |      Node:  117        | \x1b[1mLeaf 2: 139\x1b[0m | \x1b[1mLeaf 1: 146\x1b[0m |      Node:  164                  \n                                      | \x1b[1mLeaf 8: 4\x1b[0m | \x1b[1mLeaf 4: 24\x1b[0m |             |             | \x1b[1mLeaf 7: 7\x1b[0m |      Node:   10      \n                                      |                                      |             |           | \x1b[1mLeaf 9: 1\x1b[0m | \x1b[1mLeaf 6: 1\x1b[0m\n"
-
-    fin_str = "                                            Node: 1000                                                                        \n                              Node:  419         |                      Node:  581                                            \n      Node:  190                   | \x1b[1mLeaf 0: 229\x1b[0m |        Node:  266         |        Node:  315                              \n\x1b[1mLeaf 4: 94\x1b[0m |      Node:   96       |             | \x1b[1mLeaf 3: 127\x1b[0m | \x1b[1mLeaf 2: 139\x1b[0m | \x1b[1mLeaf 1: 146\x1b[0m |                  Node:  169      \n           | \x1b[1mLeaf 6: 1\x1b[0m | \x1b[1mLeaf 9: 1\x1b[0m |             |                           |             |      Node:    3       | \x1b[1mLeaf 7: 4\x1b[0m\n                                                 |                           |             | \x1b[1mLeaf 8: 1\x1b[0m | \x1b[1mLeaf 5: 2\x1b[0m |          \n"
+    out_str = '                                           Node: 1000                                                                       \n                 Node:  438                     |        Node:  562                                                         \n     Node:  217       |       Node:  221        | \x1b[1mLeaf 0: 229\x1b[0m |        Node:  333                                           \n\x1b[1mLeaf 5: 0\x1b[0m | \x1b[1mLeaf 2: 0\x1b[0m | \x1b[1mLeaf 4: 57\x1b[0m | \x1b[1mLeaf 3: 72\x1b[0m |             | \x1b[1mLeaf 1: 146\x1b[0m |       Node:  187                              \n                                                |             |             | \x1b[1mLeaf 7: 11\x1b[0m |      Node:   15                  \n                                                |             |             |            | \x1b[1mLeaf 8: 2\x1b[0m |      Node:   10      \n                                                |             |             |            |           | \x1b[1mLeaf 6: 1\x1b[0m | \x1b[1mLeaf 9: 1\x1b[0m\n'
+    
+    fin_str = '                                  Node: 1000                                                                                    \n                    Node:  450         |                                                        Node:  550                      \n      Node:  221         | \x1b[1mLeaf 0: 229\x1b[0m |                              Node:  265                     |        Node:  285        \n\x1b[1mLeaf 4: 94\x1b[0m | \x1b[1mLeaf 3: 127\x1b[0m |             |      Node:  127                   |       Node:  138        | \x1b[1mLeaf 2: 139\x1b[0m | \x1b[1mLeaf 1: 146\x1b[0m\n                                       | \x1b[1mLeaf 5: 2\x1b[0m |      Node:    3       | \x1b[1mLeaf 6: 14\x1b[0m | \x1b[1mLeaf 7: 17\x1b[0m |                          \n                                       |           | \x1b[1mLeaf 8: 1\x1b[0m | \x1b[1mLeaf 9: 2\x1b[0m |                         |                          \n'
 
     assert model.__str__() == out_str
     assert finer_model.__str__() == fin_str
@@ -175,10 +175,10 @@ def test_adaptive_batch_search(helpers):
     model(y_cat)
     nb_queries = model.nb_queries
 
-    assert model.back_end.root.value == len(y_cat) - 2 ** model.round + 2
-    assert nb_queries == 157725
+    assert model.back_end.root.value == len(y_cat)
+    assert nb_queries == 157671
 
-    out_str = '         Node: 34466                                                                                                     \n\x1b[1mLeaf 0: 14677\x1b[0m |                  Node: 19789                                                                             \n              |      Node:  6981      |                                          Node: 12808                             \n              | \x1b[1mLeaf 1: 0\x1b[0m | \x1b[1mLeaf 8: 0\x1b[0m |                  Node:    46                  |      Node:    54                 \n              |                       |      Node:     1      |      Node:     2      | \x1b[1mLeaf 2: 5\x1b[0m |      Node:     7     \n              |                       | \x1b[1mLeaf 4: 0\x1b[0m | \x1b[1mLeaf 6: 1\x1b[0m | \x1b[1mLeaf 7: 0\x1b[0m | \x1b[1mLeaf 9: 0\x1b[0m |           | \x1b[1mLeaf 3: 0\x1b[0m | \x1b[1mLeaf 5: 0\x1b[0m\n'
+    out_str = '        Node: 100000                                                                                                      \n\x1b[1mLeaf 0: 42540\x1b[0m |                                                      Node:  57460                                         \n              |      Node:  25326                                          |                 Node:  32134                 \n              | \x1b[1mLeaf 4: 38\x1b[0m |                 Node:    115                  |     Node:      0      |     Node:      0     \n              |            |     Node:      0      |     Node:      0      | \x1b[1mLeaf 3: 0\x1b[0m | \x1b[1mLeaf 5: 0\x1b[0m | \x1b[1mLeaf 1: 0\x1b[0m | \x1b[1mLeaf 8: 0\x1b[0m\n              |            | \x1b[1mLeaf 7: 0\x1b[0m | \x1b[1mLeaf 9: 0\x1b[0m | \x1b[1mLeaf 6: 0\x1b[0m | \x1b[1mLeaf 2: 0\x1b[0m |                                              \n'
 
     assert model.__str__() == out_str
 
