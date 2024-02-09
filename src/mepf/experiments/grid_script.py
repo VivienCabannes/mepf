@@ -42,7 +42,7 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
             proba = geometric(m)
     proba = rng.permutation(proba)
     n_data = nb_data_required(proba, delta)
-    if n_data >= 50_000:
+    if n_data >= 1_000:
         return None, n_data, None
     query_lim = int(np.floor(np.log2(m) * n_data))
     y_cat = rng.choice(m, size=query_lim, p=proba)
@@ -52,7 +52,7 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
 def experiments(config, seed):
     rng = np.random.default_rng(seed)
     y_cat, n_data, proba = generate_problem(config.num_classes, config.problem, config.delta, rng)
-    if n_data >= 50_000:
+    if n_data >= 1_000:
         return {
             'n_data': n_data,
             'problem': config.problem,
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     grid = {
-        "method": ["ES", "AS", "TS", "HTS", "E", "SE"],
+        "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
         "problem": ["dirichlet", "one", "two", "geometric"],
         "num_classes": [3, 10, 30, 100, 300, 1000],
         "delta": [2 ** -i for i in range(1, 10)],

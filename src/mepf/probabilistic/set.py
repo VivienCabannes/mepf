@@ -256,7 +256,7 @@ class SetElimination:
         Scheduling of batch size and admissibility
         """
         epsilon = (2 / 3) ** round / (4 * self.m)
-        batch_size = 2**round
+        batch_size = 2 ** round
         return batch_size, epsilon
 
     def __call__(self, y_cat: List[int], epsilon: float = 0):
