@@ -37,7 +37,7 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
         case "one":
             proba = one_vs_all(m, p1=1 / 2)
         case "two":
-            proba = two_vs_all(m, p1=max(1.5 / m, 0.1), diff=.01)
+            proba = two_vs_all(m, p1=.2, diff=.14)
         case "geometric":
             proba = geometric(m)
     proba = rng.permutation(proba)
@@ -242,8 +242,9 @@ if __name__ == "__main__":
 
     grid = {
         "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
-        "problem": ["dirichlet", "one", "two", "geometric"],
-        "num_classes": [3, 10, 30, 100, 300, 1000],
+        # "problem": ["dirichlet", "one", "two", "geometric"],
+        "problem": ["two"],
+        "num_classes": [10, 30, 100, 300, 1000, 3000],
         "delta": [2 ** -i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }
