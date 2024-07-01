@@ -1,8 +1,11 @@
 """
 Round Free Set Elimination
 """
+
 import heapq
+
 import numpy as np
+
 from ..binary_tree import EliminatedNode, Leaf, Node, Tree
 
 
@@ -32,14 +35,15 @@ class RoundFreeSetElimination(Tree):
         List of past samples.
     y_observations: np.ndarray
         List of weak observation of past samples.
-
-    Notes
-    -----
-    There is a small bug that is highly unlikely to happen, due to Vitter rebalancing at the partition level.
-    We should be treated nodes in the partition as leaves according to the Vitter ordering, which could create a bug.
     """
 
-    def __init__(self, m: int, confidence_level: float = 1, constant: float = 24, gamma: float = .5):
+    def __init__(
+        self,
+        m: int,
+        confidence_level: float = 1,
+        constant: float = 24,
+        gamma: float = 0.5,
+    ):
         """
         Initialize the tree.
 
@@ -199,7 +203,7 @@ class RoundFreeSetElimination(Tree):
         Split elements of the current partition
         """
         codes = self.get_codes()
-        setattr(self, "y_codes", codes[self.y_cat[:self.root.value]])
+        setattr(self, "y_codes", codes[self.y_cat[: self.root.value]])
         self._refine_partition(epsilon)
         delattr(self, "y_codes")
 
@@ -237,6 +241,7 @@ class RoundFreeSetElimination(Tree):
         while len(heap) > 0:
             # get the node with the biggest value
             _, node = heapq.heappop(heap)
+            node.is_leaf_node = False
 
             # we do not touch the eliminated set
             if isinstance(node, EliminatedNode):
@@ -246,6 +251,7 @@ class RoundFreeSetElimination(Tree):
             # if have reached our stop criterion, we stop
             if n_mode is not None and node.value < n_mode * self.gamma - epsilon * n:
                 self.partition.append(node)
+                node.is_leaf_node = True
                 break
 
             # the first leaf we find if the mode
@@ -271,6 +277,7 @@ class RoundFreeSetElimination(Tree):
         while len(heap) > 0:
             _, node = heapq.heappop(heap)
             self.partition.append(node)
+            node.is_leaf_node = True
 
         # update the minimum partition node index
         self.attribute_update()
@@ -304,7 +311,7 @@ class RoundFreeSetElimination(Tree):
         lcode = node.left.get_set_code(self.m)
 
         # only queries for new information
-        y_obs = self.y_observations[:self.root.value]
+        y_obs = self.y_observations[: self.root.value]
         right_unknown = y_obs[node.right.ind] & ~rcode
         right_queries = (right_unknown.sum(axis=1) != 0).sum()
         left_unknown = y_obs[node.left.ind] & ~lcode
@@ -312,8 +319,8 @@ class RoundFreeSetElimination(Tree):
         self.nb_queries += right_queries + left_queries
 
         # update observations
-        self.y_observations[:self.root.value][node.right.ind] &= rcode
-        self.y_observations[:self.root.value][node.left.ind] &= lcode
+        self.y_observations[: self.root.value][node.right.ind] &= rcode
+        self.y_observations[: self.root.value][node.left.ind] &= lcode
 
     def _vitter_update(self, node):
         """

@@ -1,8 +1,11 @@
 """
 Round Free Truncated Search
 """
+
 import heapq
+
 import numpy as np
+
 from ..binary_tree import Leaf, Node, Tree
 
 
@@ -175,10 +178,14 @@ class RoundFreeTruncatedSearch(Tree):
         while len(heap) > 0:
             # get the node with the biggest value
             _, node = heapq.heappop(heap)
+            node.is_leaf_node = False
+
             # if have reached our stop criterion, we stop
             if n_mode is not None and node.value < n_mode - epsilon * n:
                 self.partition.append(node)
+                node.is_leaf_node = True
                 break
+
             # the first leaf we find if the mode
             if isinstance(node, Leaf):
                 self.partition.append(node)
@@ -186,19 +193,23 @@ class RoundFreeTruncatedSearch(Tree):
                     self.mode = node
                     n_mode = node.value
                 continue
+
             if hasattr(self, "y_codes"):
                 # make n_node queries to get children information
                 self._report_count(node, self.y_codes)
+
             # push children in the heap
             # be careful that we need to inverse the order
             loffset = {False: 0, True: 0.5}[type(node.left) is Leaf]
             roffset = {False: 0, True: 0.5}[type(node.right) is Leaf]
             heapq.heappush(heap, (-node.left.value + loffset, node.left))
             heapq.heappush(heap, (-node.right.value + roffset, node.right))
+
         # the remaning node form the partition
         while len(heap) > 0:
             _, node = heapq.heappop(heap)
             self.partition.append(node)
+            node.is_leaf_node = True
 
         # update huffman and partition attributes
         self.attribute_update()
