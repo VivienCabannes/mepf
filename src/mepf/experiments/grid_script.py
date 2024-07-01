@@ -1,21 +1,19 @@
 import json
+
 import numpy as np
 
 from mepf import (
-    nb_data_required,
-    ExhaustiveSearch,
-    RoundFreeTruncatedSearch,
-    TruncatedSearch,
     BatchElimination,
     Elimination,
+    ExhaustiveSearch,
     RoundFreeSetElimination,
+    RoundFreeTruncatedSearch,
+    TruncatedSearch,
+    nb_elim_data_required,
 )
-from mepf.data import (
-    sample_dirichlet,
-    geometric,
-    one_vs_all,
-    two_vs_all,
-)
+from mepf.data import geometric, one_vs_all, sample_dirichlet, two_vs_all
+
+DATA_MAX = 10_000
 
 
 class NpEncoder(json.JSONEncoder):
@@ -37,12 +35,12 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
         case "one":
             proba = one_vs_all(m, p1=1 / 2)
         case "two":
-            proba = two_vs_all(m, p1=.2, diff=.14)
+            proba = two_vs_all(m, p1=0.2, diff=0.14)
         case "geometric":
             proba = geometric(m)
     proba = rng.permutation(proba)
-    n_data = nb_data_required(proba, delta)
-    if n_data >= 1_000:
+    n_data = nb_elim_data_required(proba, delta)
+    if n_data >= DATA_MAX:
         return None, n_data, None
     query_lim = int(np.floor(np.log2(m) * n_data))
     y_cat = rng.choice(m, size=query_lim, p=proba)
@@ -51,13 +49,15 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
 
 def experiments(config, seed):
     rng = np.random.default_rng(seed)
-    y_cat, n_data, proba = generate_problem(config.num_classes, config.problem, config.delta, rng)
-    if n_data >= 1_000:
+    y_cat, n_data, proba = generate_problem(
+        config.num_classes, config.problem, config.delta, rng
+    )
+    if n_data >= DATA_MAX:
         return {
-            'n_data': n_data,
-            'problem': config.problem,
-            'm': config.num_classes,
-            'delta': config.delta,
+            "n_data": n_data,
+            "problem": config.problem,
+            "m": config.num_classes,
+            "delta": config.delta,
         }
     m = len(proba)
 
@@ -103,7 +103,7 @@ def experiments(config, seed):
             while s_ind < len(y_cat):
                 r += 1
                 epsilon = (2 / 3) ** r / (4 * m)
-                bsz = 2 ** r
+                bsz = 2**r
                 e_ind = s_ind + bsz
                 model(y_cat[s_ind:e_ind], epsilon)
                 s_ind = e_ind
@@ -126,15 +126,15 @@ def experiments(config, seed):
                     break
 
     results = {
-        'nb_queries': model.nb_queries,
-        'success': bool(model.mode.label == np.argmax(proba)),
-        'n_data': n_data,
-        'method': config.method,
-        'problem': config.problem,
-        'm': config.num_classes,
-        'delta': config.delta,
-        'constant': config.constant,
-        'seed': seed,
+        "nb_queries": model.nb_queries,
+        "success": bool(model.mode.label == np.argmax(proba)),
+        "n_data": n_data,
+        "method": config.method,
+        "problem": config.problem,
+        "m": config.num_classes,
+        "delta": config.delta,
+        "constant": config.constant,
+        "seed": seed,
     }
     return results
 
@@ -241,11 +241,12 @@ if __name__ == "__main__":
         sys.exit(0)
 
     grid = {
-        "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
-        # "problem": ["dirichlet", "one", "two", "geometric"],
-        "problem": ["two"],
+        # "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
+        "method": ["E", "SE", "HSE"],
+        "problem": ["dirichlet", "one", "two", "geometric"],
+        # "problem": ["two"],
         "num_classes": [10, 30, 100, 300, 1000, 3000],
-        "delta": [2 ** -i for i in range(1, 10)],
+        "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }
 

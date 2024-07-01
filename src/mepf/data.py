@@ -126,6 +126,17 @@ def nb_data_required(proba, delta):
     """
     tmp = -np.partition(-proba, 2)[:2]
     diff = np.sqrt(tmp[0]) - np.sqrt(tmp[1])
-    sanov_exp = - np.log(1 - diff ** 2)
-    nb_data = - np.log(delta) / sanov_exp
+    sanov_exp = -np.log(1 - diff**2)
+    nb_data = -np.log(delta) / sanov_exp
+    return int(np.ceil(nb_data))
+
+
+def nb_elim_data_required(proba, delta):
+    """
+    Number of data require to get a confidence level for elimination algorithms.
+    """
+    p1, p2 = -np.partition(-proba, 2)[:2]
+    print(p1, p2)
+    Delta = (p1 - p2) ** 2 / p1
+    nb_data = -108 * np.log(delta) / Delta
     return int(np.ceil(nb_data))

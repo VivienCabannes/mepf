@@ -7,3 +7,6 @@ notebooks/
 old/
 bandit/
 results/
+
+*.pdf
+*.csv

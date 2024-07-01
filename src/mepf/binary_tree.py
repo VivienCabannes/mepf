@@ -1,7 +1,9 @@
 """
 Tree Constructors
 """
+
 from __future__ import annotations
+
 import heapq
 from typing import List
 
@@ -19,6 +21,7 @@ class Vertex:
     code: ndarray of size (max_depth,)
         Code associated with the vertex
     """
+
     def __init__(self):
         self.parent: Vertex = None
         self.depth: int = None
@@ -46,7 +49,11 @@ class Vertex:
             return True
         if self.value > other.value:
             return False
-        if (type(self) is type(other)) or isinstance(self, Node):
+        if type(self) is type(other):
+            return False
+        if isinstance(self, Node) and not self.is_leaf_node:
+            return False
+        if isinstance(self, Node) and self.is_leaf_node and isinstance(other, Leaf):
             return False
         return True
 
@@ -60,10 +67,12 @@ class Leaf(Vertex):
     label: int
         Class associated with this leaf
     """
+
     def __init__(self, value: int = None, label: int = None):
         Vertex.__init__(self)
         self.value = value
         self.label = label
+        self.is_leaf_node = None
 
     def update_depth(self, depth: int):
         self.depth = depth
@@ -93,6 +102,7 @@ class Node(Vertex):
     """
     Node object
     """
+
     def __init__(self, left: Vertex = None, right: Vertex = None):
         Vertex.__init__(self)
         if left is None:
@@ -104,6 +114,8 @@ class Node(Vertex):
             self.right = right
             self.left.parent = self
             self.right.parent = self
+
+        self.is_leaf_node = False
 
         if self.left.value is not None and self.right.value is not None:
             self.value = self.left.value + self.right.value
@@ -214,7 +226,7 @@ class EliminatedNode(Vertex):
         return f"EliminatedNode({self.value:3d}) at {id(self)}"
 
     def __str__(self):
-        out = f'EliminatedNode: {self.value} \n'
+        out = f"EliminatedNode: {self.value} \n"
         strs = [child._get_print() for child in self.children]
         lengths = [len(i[0]) for i in strs]
         lines_nb = max(len(i) for i in strs)
@@ -223,10 +235,10 @@ class EliminatedNode(Vertex):
                 if tmp:
                     cur = tmp.pop(0)
                 else:
-                    cur = ' ' * lengths[j]
-                out += cur + ' | '
+                    cur = " " * lengths[j]
+                out += cur + " | "
             out = out[:-3]
-            out += '\n'
+            out += "\n"
         return out
 
     def _get_print(self, length=None):
@@ -377,7 +389,7 @@ class Tree:
         depth = codes.shape[1] + 1
         codes_per_depth = {i: set({}) for i in range(depth + 1)}
         for code in codes:
-            current = ''
+            current = ""
             for char in code:
                 if char == -1:
                     break
@@ -394,7 +406,7 @@ class Tree:
         for code in sorted_nodes:
             node = self.root
             for char in code:
-                if char == '0':
+                if char == "0":
                     node = node.left
                 else:
                     node = node.right
