@@ -9,6 +9,7 @@ from mepf import (
     RoundFreeSetElimination,
     RoundFreeTruncatedSearch,
     TruncatedSearch,
+    nb_data_required,
     nb_elim_data_required,
 )
 from mepf.data import geometric, one_vs_all, sample_dirichlet, two_vs_all
@@ -39,22 +40,24 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
         case "geometric":
             proba = geometric(m)
     proba = rng.permutation(proba)
-    n_data = nb_elim_data_required(proba, delta)
-    if n_data >= DATA_MAX:
-        return None, n_data, None
+    n_data = nb_data_required(proba, delta)
+    n_elim_data = nb_elim_data_required(proba, delta)
+    if n_elim_data >= DATA_MAX:
+        return None, n_data, n_elim_data, None
     query_lim = int(np.floor(np.log2(m) * n_data))
     y_cat = rng.choice(m, size=query_lim, p=proba)
-    return y_cat, n_data, proba
+    return y_cat, n_data, n_elim_data, proba
 
 
 def experiments(config, seed):
     rng = np.random.default_rng(seed)
-    y_cat, n_data, proba = generate_problem(
+    y_cat, n_data, n_elim_data, proba = generate_problem(
         config.num_classes, config.problem, config.delta, rng
     )
-    if n_data >= DATA_MAX:
+    if n_elim_data >= DATA_MAX:
         return {
             "n_data": n_data,
+            "n_elim_data": n_elim_data,
             "problem": config.problem,
             "m": config.num_classes,
             "delta": config.delta,
@@ -128,7 +131,9 @@ def experiments(config, seed):
     results = {
         "nb_queries": model.nb_queries,
         "success": bool(model.mode.label == np.argmax(proba)),
+        "n_eff_data": model.root.value,
         "n_data": n_data,
+        "n_elim_data": n_elim_data,
         "method": config.method,
         "problem": config.problem,
         "m": config.num_classes,
@@ -241,10 +246,8 @@ if __name__ == "__main__":
         sys.exit(0)
 
     grid = {
-        # "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
-        "method": ["E", "SE", "HSE"],
+        "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
         "problem": ["dirichlet", "one", "two", "geometric"],
-        # "problem": ["two"],
         "num_classes": [10, 30, 100, 300, 1000, 3000],
         "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
