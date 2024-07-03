@@ -86,8 +86,8 @@ class RoundFreeSetElimination(Tree):
         self.nb_queries = 0
 
         # remember past information for comeback
-        self.y_cat = None
-        self.y_observations = None
+        self.y_cat = np.empty((0,), dtype=int)
+        self.y_observations = np.empty((0, self.m), dtype=bool)
 
     def __call__(self, y: int, epsilon: float = 0):
         """
@@ -111,18 +111,14 @@ class RoundFreeSetElimination(Tree):
 
         i = self.root.value
 
-        if self.y_cat is None:
-            self.y_cat = np.array([y], dtype=int)
-            self.y_observations = np.zeros((1, self.m), dtype=bool)
-
         # dynamic resizing of past history
         if i == len(self.y_cat):
             tmp = self.y_cat
             length = len(tmp)
-            self.y_cat = np.zeros((2 * length), dtype=int)
+            self.y_cat = np.zeros(max([2 * length, 1]), dtype=int)
             self.y_cat[:length] = tmp
             tmp = self.y_observations
-            self.y_observations = np.zeros((2 * length, self.m), dtype=bool)
+            self.y_observations = np.zeros((max(2 * length, 1), self.m), dtype=bool)
             self.y_observations[:length] = tmp
 
         # report observation
