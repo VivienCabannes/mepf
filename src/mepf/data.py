@@ -136,7 +136,6 @@ def nb_elim_data_required(proba, delta):
     Number of data require to get a confidence level for elimination algorithms.
     """
     p1, p2 = -np.partition(-proba, 2)[:2]
-    print(p1, p2)
     Delta = (p1 - p2) ** 2 / p1
     nb_data = -108 * np.log(delta) / Delta
     return int(np.ceil(nb_data))

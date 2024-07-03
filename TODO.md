@@ -1,11 +1,7 @@
 #### TODO
 
-Set stopping time according to the limit prescripted by the theorem
-N = 108 * p(y_1) / nabla_2^2 log(1 / delta).
-if doubling trick:
-N = 216 * p(y_1) / nabla_2^2 log(1 / delta).
-
-Calibration to get a good `c`.
+- Bugs are cleared.
+- [x] Finish the code for the calibation part - it is in the postprocessing notebook.
 
 
 - get tables from the raw data

@@ -86,8 +86,8 @@ class RoundFreeSetElimination(Tree):
         self.nb_queries = 0
 
         # remember past information for comeback
-        self.y_cat = np.arange(m, dtype=int)
-        self.y_observations = np.eye(m, dtype=bool)[np.arange(m)]
+        self.y_cat = None
+        self.y_observations = None
 
     def __call__(self, y: int, epsilon: float = 0):
         """
@@ -110,6 +110,10 @@ class RoundFreeSetElimination(Tree):
             return
 
         i = self.root.value
+
+        if self.y_cat is None:
+            self.y_cat = np.array([y], dtype=int)
+            self.y_observations = np.zeros((1, self.m), dtype=bool)
 
         # dynamic resizing of past history
         if i == len(self.y_cat):
@@ -170,6 +174,16 @@ class RoundFreeSetElimination(Tree):
                 else:
                     remaining_node.append(node)
             if tree_change:
+                # if the trash is nested in a node of the partition
+                node = self.trash.parent
+                while node is not None and node not in remaining_node:
+                    node = node.parent
+                if node is not None:
+                    remaining_node.remove(node)
+                    labels = node.get_descendent_labels()
+                    self.trash.children = [self.y2leaf[i] for i in labels]
+                    self.trash.value = node.value
+
                 self.partition = remaining_node
                 root = Tree.huffman_build(self.partition)
                 self.replace_root(root)
@@ -239,6 +253,7 @@ class RoundFreeSetElimination(Tree):
         heapq.heappush(heap, (-self.root.value, self.root))
         self.partition = []
         while len(heap) > 0:
+
             # get the node with the biggest value
             _, node = heapq.heappop(heap)
             node.is_leaf_node = False

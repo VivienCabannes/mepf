@@ -1,9 +1,12 @@
 """
 Batch Forever Elimination
 """
+
 import heapq
 from typing import List
+
 import numpy as np
+
 from ..binary_tree import EliminatedNode, Leaf, Tree
 
 
@@ -122,6 +125,16 @@ class BatchElimination(Tree):
                 else:
                     remaining_node.append(node)
             if tree_change:
+                # if the trash is nested in a node of the partition
+                node = self.trash.parent
+                while node is not None and node not in remaining_node:
+                    node = node.parent
+                if node is not None:
+                    remaining_node.remove(node)
+                    labels = node.get_descendent_labels()
+                    self.trash.children = [self.y2leaf[i] for i in labels]
+                    self.trash.value = node.value
+
                 self.partition = remaining_node
 
         root = self.huffman_build(self.partition)
@@ -256,7 +269,7 @@ class SetElimination:
         Scheduling of batch size and admissibility
         """
         epsilon = (2 / 3) ** round / (4 * self.m)
-        batch_size = 2 ** round
+        batch_size = 2**round
         return batch_size, epsilon
 
     def __call__(self, y_cat: List[int], epsilon: float = 0):

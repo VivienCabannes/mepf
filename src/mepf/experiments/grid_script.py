@@ -40,24 +40,23 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
         case "geometric":
             proba = geometric(m)
     proba = rng.permutation(proba)
-    n_data = nb_data_required(proba, delta)
-    n_elim_data = nb_elim_data_required(proba, delta)
-    if n_elim_data >= DATA_MAX:
-        return None, n_data, n_elim_data, None
-    query_lim = int(np.floor(np.log2(m) * n_data))
-    y_cat = rng.choice(m, size=query_lim, p=proba)
-    return y_cat, n_data, n_elim_data, proba
+    n_sanov = nb_data_required(proba, delta)
+    n_elim = nb_elim_data_required(proba, delta)
+    if n_elim >= DATA_MAX:
+        return None, n_sanov, n_elim, None
+    y_cat = rng.choice(m, size=n_elim, p=proba)
+    return y_cat, n_sanov, n_elim, proba
 
 
 def experiments(config, seed):
     rng = np.random.default_rng(seed)
-    y_cat, n_data, n_elim_data, proba = generate_problem(
+    y_cat, n_sanov, n_elim, proba = generate_problem(
         config.num_classes, config.problem, config.delta, rng
     )
-    if n_elim_data >= DATA_MAX:
+    if n_elim >= DATA_MAX:
         return {
-            "n_data": n_data,
-            "n_elim_data": n_elim_data,
+            "n_sanov": n_sanov,
+            "n_elim": n_elim,
             "problem": config.problem,
             "m": config.num_classes,
             "delta": config.delta,
@@ -66,26 +65,34 @@ def experiments(config, seed):
 
     match config.method:
         case "ES":
-            y_cat = y_cat[:n_data]
+            y_cat = y_cat[:n_sanov]
             model = ExhaustiveSearch(m, adaptive=False)
             for y in y_cat:
                 model(y)
+            # cla, fre = np.unique(y_cat, return_counts=True)
+            # assert fre[model.mode.label == cla] == np.max(fre)
         case "AS":
-            y_cat = y_cat[:n_data]
+            y_cat = y_cat[:n_sanov]
             model = ExhaustiveSearch(m, adaptive=True)
             for y in y_cat:
                 model(y)
+            # cla, fre = np.unique(y_cat, return_counts=True)
+            # assert fre[model.mode.label == cla] == np.max(fre)
         case "TS":
-            y_cat = y_cat[:n_data]
+            y_cat = y_cat[:n_sanov]
             model = TruncatedSearch(m)
             model(y_cat)
+            model = model.back_end
+            # cla, fre = np.unique(y_cat, return_counts=True)
+            # assert fre[model.mode.label == cla] == np.max(fre)
         case "HTS":
-            y_cat = y_cat[:n_data]
+            y_cat = y_cat[:n_sanov]
             model = RoundFreeTruncatedSearch(m)
             for y in y_cat:
                 model(y)
+            # cla, fre = np.unique(y_cat, return_counts=True)
+            # assert fre[model.mode.label == cla] == np.max(fre)
         case "E":
-            query_lim = len(y_cat)
             model = Elimination(
                 m, confidence_level=1 - config.delta, constant=config.constant
             )
@@ -93,11 +100,7 @@ def experiments(config, seed):
                 model(y)
                 if model.eliminated.sum() == m - 1:
                     break
-                if model.nb_queries >= query_lim:
-                    model.nb_queries = -1
-                    break
         case "SE":
-            query_lim = len(y_cat)
             model = BatchElimination(
                 m, confidence_level=1 - config.delta, constant=config.constant
             )
@@ -112,11 +115,7 @@ def experiments(config, seed):
                 s_ind = e_ind
                 if model.eliminated.sum() == m - 1:
                     break
-                if model.nb_queries >= query_lim:
-                    model.nb_queries = -1
-                    break
         case "HSE":
-            query_lim = len(y_cat)
             model = RoundFreeSetElimination(
                 m, confidence_level=1 - config.delta, constant=config.constant
             )
@@ -124,16 +123,13 @@ def experiments(config, seed):
                 model(y)
                 if model.eliminated.sum() == m - 1:
                     break
-                if model.nb_queries >= query_lim:
-                    model.nb_queries = -1
-                    break
 
     results = {
         "nb_queries": model.nb_queries,
         "success": bool(model.mode.label == np.argmax(proba)),
-        "n_eff_data": model.root.value,
-        "n_data": n_data,
-        "n_elim_data": n_elim_data,
+        "n_data": model.root.value,
+        "n_sanov": n_sanov,
+        "n_elim": n_elim,
         "method": config.method,
         "problem": config.problem,
         "m": config.num_classes,
@@ -248,7 +244,7 @@ if __name__ == "__main__":
     grid = {
         "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
         "problem": ["dirichlet", "one", "two", "geometric"],
-        "num_classes": [10, 30, 100, 300, 1000, 3000],
+        "num_classes": [15, 30, 100, 300, 1000, 3000],
         "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }
