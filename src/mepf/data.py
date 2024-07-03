@@ -38,6 +38,11 @@ def one_vs_all(m, p1):
     proba : array of shape (m,)
         Probability distribution
     """
+    if m == -1:
+        proba = np.array([100] + [10] * 100, dtype=float)
+        proba /= proba.sum()
+        return proba
+
     assert p1 > 1 / m, "p1 is too small to be the mode of m elements"
     proba = np.zeros(m)
     proba[:] = (1 - p1) / (m - 1)
@@ -63,6 +68,11 @@ def two_vs_all(m, p1, diff):
     proba : array of shape (m,)
         Probability distribution
     """
+    if m == -1:
+        proba = np.array([100, 85] + [55] * 100, dtype=float)
+        proba /= proba.sum()
+        return proba
+
     p2 = p1 - diff
     p3 = (1 - p1 - p2) / (m - 2)
     assert p1 > 1 / m, "p1 is too small to be the mode of m elements"

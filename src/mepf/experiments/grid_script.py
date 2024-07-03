@@ -14,7 +14,7 @@ from mepf import (
 )
 from mepf.data import geometric, one_vs_all, sample_dirichlet, two_vs_all
 
-DATA_MAX = 10_000
+DATA_MAX = 10_000_000
 
 
 class NpEncoder(json.JSONEncoder):
@@ -44,6 +44,7 @@ def generate_problem(m: int, problem: str, delta: float, rng: np.random.Generato
     n_elim = nb_elim_data_required(proba, delta)
     if n_elim >= DATA_MAX:
         return None, n_sanov, n_elim, None
+    m = len(proba)
     y_cat = rng.choice(m, size=n_elim, p=proba)
     return y_cat, n_sanov, n_elim, proba
 
@@ -242,9 +243,12 @@ if __name__ == "__main__":
         sys.exit(0)
 
     grid = {
-        "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
-        "problem": ["dirichlet", "one", "two", "geometric"],
-        "num_classes": [15, 30, 100, 300, 1000, 3000],
+        # "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
+        "method": ["ES", "AS", "TS", "E", "SE"],
+        # "problem": ["dirichlet", "one", "two", "geometric"],
+        "problem": ["one", "two"],
+        # "num_classes": [15, 30, 100, 300, 1000, 3000],
+        "num_classes": [-1],
         "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }
