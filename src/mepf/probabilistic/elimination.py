@@ -1,6 +1,7 @@
 """
 Forever Elimination
 """
+
 import numpy as np
 
 from ..binary_tree import EliminatedNode, Leaf, Node, Tree
@@ -24,7 +25,13 @@ class Elimination(Tree):
         Total number of queries made.
     """
 
-    def __init__(self, m: int, confidence_level: float = 1, constant: float = 24, adaptive: bool = True):
+    def __init__(
+        self,
+        m: int,
+        confidence_level: float = 1,
+        constant: float = 24,
+        adaptive: bool = True,
+    ):
         """
         Initialize the tree.
 
@@ -243,7 +250,7 @@ class Elimination(Tree):
         depth = codes.shape[1] + 1
         codes_per_depth = {i: set({}) for i in range(depth + 1)}
         for code in codes:
-            current = ''
+            current = ""
             for char in code:
                 if char == -1:
                     break
@@ -260,7 +267,7 @@ class Elimination(Tree):
         for code in sorted_nodes:
             node = self.root
             for char in code:
-                if char == '0':
+                if char == "0":
                     node = node.left
                 else:
                     node = node.right
