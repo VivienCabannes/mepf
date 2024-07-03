@@ -61,8 +61,9 @@ def scatter_result(save_dir, res_dir, grid):
                             "nb_queries",
                             "success",
                             "n_data",
-                            "n_data_eff",
-                            "n_data_" "constant",
+                            "n_sanov",
+                            "n_elim",
+                            "constant",
                             "seed",
                         ]
                     ].reset_index(drop=True)
@@ -90,7 +91,11 @@ def process_results(res_dir, grid, func):
                     if not sub_dir.exists():
                         logging.warning(f"Missing {sub_dir}")
                     file_path = sub_dir / "res.pkl"
-                    res = pd.read_pickle(file_path)
+                    try:
+                        res = pd.read_pickle(file_path)
+                    except FileNotFoundError as e:
+                        logger.warning(e)
+                        continue
                     for line in func(res, method, problem, m, delta):
                         all_res.append(line)
     return all_res
@@ -163,6 +168,9 @@ def get_statistics(res_dir, grid, tol=0):
         res["nb_queries"] = res["nb_queries"].astype(float)
         res = res.dropna()
         res.loc[res["nb_queries"] == -1, "nb_queries"] = np.inf
+        # run stopped by us are considered unsuccessful
+        # res.loc[res["n_elim"] == res["n_data"], "success"] = False
+        # unsuccessful runs will not count
         res.loc[res["success"] == False, "nb_queries"] = np.inf
 
         for constant in grid["constant"]:
@@ -172,7 +180,9 @@ def get_statistics(res_dir, grid, tol=0):
 
             delta_effective = 1 - tmp["success"].mean()
             ratio_exp = len(tmp) / num_exp
+            num_best = int(len(tmp) * (1 - delta * (1 + tol)))
             best = tmp.sort_values("nb_queries")["nb_queries"][:num_best]
+
             if np.isinf(best.values).any():
                 best_mean = np.nan
                 best_std = np.nan
@@ -219,13 +229,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--res-dir",
         type=str,
-        default="/home/vivc/results_processed/",
+        default="/private/home/vivc/code/mepf/results",
         help="postprocessed saving directory",
     )
     parser.add_argument(
         "--save-dir",
         type=str,
-        default="/home/vivc/mepf/",
+        default="/checkpoint/vivc/mepf/new/",
         help="preprocessed result directory",
     )
     parser.add_argument(
@@ -240,10 +250,9 @@ if __name__ == "__main__":
     tol = config.tol
 
     grid = {
-        # "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
-        "method": ["E"],
+        "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
         "problem": ["dirichlet", "one", "two", "geometric"],
-        "num_classes": [10, 30, 100, 300, 1000, 3000],
+        "num_classes": [15, 30, 100, 300, 1000, 3000],
         "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }
