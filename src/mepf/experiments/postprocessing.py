@@ -230,13 +230,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--res-dir",
         type=str,
-        default="/private/home/vivc/code/mepf/results",
+        default="results/",
         help="postprocessed saving directory",
     )
     parser.add_argument(
         "--save-dir",
         type=str,
-        default="/checkpoint/vivc/mepf",
+        default="results/",
         help="preprocessed result directory",
     )
     parser.add_argument(
@@ -251,12 +251,9 @@ if __name__ == "__main__":
     tol = config.tol
 
     grid = {
-        "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
-        # "method": ["ES", "AS", "TS", "E", "SE"],
-        "problem": ["dirichlet", "one", "two", "geometric"],
-        # "problem": ["one", "two"],
-        "num_classes": [15, 30, 100, 300, 1000, 3000],
-        # "num_classes": [-1],
+        "method": ["ES", "AS", "TS", "E", "SE"],
+        "problem": ["one", "two", "geometric"],
+        "num_classes": [30, 100, 300, 1000],
         "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }

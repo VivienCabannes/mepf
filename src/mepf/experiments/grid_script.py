@@ -70,29 +70,21 @@ def experiments(config, seed):
             model = ExhaustiveSearch(m, adaptive=False)
             for y in y_cat:
                 model(y)
-            # cla, fre = np.unique(y_cat, return_counts=True)
-            # assert fre[model.mode.label == cla] == np.max(fre)
         case "AS":
             y_cat = y_cat[:n_sanov]
             model = ExhaustiveSearch(m, adaptive=True)
             for y in y_cat:
                 model(y)
-            # cla, fre = np.unique(y_cat, return_counts=True)
-            # assert fre[model.mode.label == cla] == np.max(fre)
         case "TS":
             y_cat = y_cat[:n_sanov]
             model = TruncatedSearch(m)
             model(y_cat)
             model = model.back_end
-            # cla, fre = np.unique(y_cat, return_counts=True)
-            # assert fre[model.mode.label == cla] == np.max(fre)
         case "HTS":
             y_cat = y_cat[:n_sanov]
             model = RoundFreeTruncatedSearch(m)
             for y in y_cat:
                 model(y)
-            # cla, fre = np.unique(y_cat, return_counts=True)
-            # assert fre[model.mode.label == cla] == np.max(fre)
         case "E":
             model = Elimination(
                 m, confidence_level=1 - config.delta, constant=config.constant
@@ -243,12 +235,9 @@ if __name__ == "__main__":
         sys.exit(0)
 
     grid = {
-        # "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
         "method": ["ES", "AS", "TS", "E", "SE"],
-        # "problem": ["dirichlet", "one", "two", "geometric"],
-        "problem": ["one", "two"],
-        # "num_classes": [15, 30, 100, 300, 1000, 3000],
-        "num_classes": [-1],
+        "problem": ["one", "two", "geometric"],
+        "num_classes": [30, 100, 300, 1000],
         "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }

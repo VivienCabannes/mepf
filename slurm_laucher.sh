@@ -15,7 +15,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus-per-node=0
-#SBATCH --array=1-9070
+#SBATCH --array=1-1080
 
 
 python /private/home/vivc/code/mepf/src/mepf/experiments/grid_script.py --num-tasks $SLURM_ARRAY_TASK_COUNT --task-id $SLURM_ARRAY_TASK_ID --save-dir /checkpoint/vivc/mepf
