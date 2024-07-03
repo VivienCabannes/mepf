@@ -162,15 +162,17 @@ def get_statistics(res_dir, grid, tol=0):
     def stat_report(res, method, problem, m, delta):
         # number of experiments and of required success
         num_exp = int(np.ceil(10 / delta))
-        num_best = int(num_exp * (1 - delta * (1 + tol)))
+        # num_best = int(num_exp * (1 - delta * (1 + tol)))
+        num_best = num_exp
 
         # remove experiments that were not launched & clean data
         res["nb_queries"] = res["nb_queries"].astype(float)
         res = res.dropna()
         # # run stopped by us may be considered unsuccessful
         # res.loc[res["n_elim"] == res["n_data"], "success"] = False
-        # unsuccessful runs will not count
-        res.loc[res["success"] == False, "nb_queries"] = np.inf
+
+        # # unsuccessful runs will not count
+        # res.loc[res["success"] == False, "nb_queries"] = np.inf
 
         for constant in grid["constant"]:
             if method in ["ES", "AS", "TS", "HTS"] and constant != 1:
@@ -179,7 +181,7 @@ def get_statistics(res_dir, grid, tol=0):
 
             delta_effective = 1 - tmp["success"].mean()
             ratio_exp = len(tmp) / num_exp
-            num_best = int(len(tmp) * (1 - delta * (1 + tol)))
+            # num_best = int(len(tmp) * (1 - delta * (1 + tol)))
             best = tmp.sort_values("nb_queries")["nb_queries"][:num_best]
 
             if np.isinf(best.values).any():
@@ -234,7 +236,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save-dir",
         type=str,
-        default="/checkpoint/vivc/mepf/new/",
+        default="/checkpoint/vivc/mepf",
         help="preprocessed result directory",
     )
     parser.add_argument(
@@ -250,8 +252,11 @@ if __name__ == "__main__":
 
     grid = {
         "method": ["ES", "AS", "TS", "HTS", "E", "SE", "HSE"],
+        # "method": ["ES", "AS", "TS", "E", "SE"],
         "problem": ["dirichlet", "one", "two", "geometric"],
+        # "problem": ["one", "two"],
         "num_classes": [15, 30, 100, 300, 1000, 3000],
+        # "num_classes": [-1],
         "delta": [2**-i for i in range(1, 10)],
         "constant": [0.1, 0.3, 1, 3, 10, 24],
     }
