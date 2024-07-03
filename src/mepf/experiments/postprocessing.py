@@ -164,11 +164,10 @@ def get_statistics(res_dir, grid, tol=0):
         num_exp = int(np.ceil(10 / delta))
         num_best = int(num_exp * (1 - delta * (1 + tol)))
 
-        # cleaning query number
+        # remove experiments that were not launched & clean data
         res["nb_queries"] = res["nb_queries"].astype(float)
         res = res.dropna()
-        res.loc[res["nb_queries"] == -1, "nb_queries"] = np.inf
-        # run stopped by us are considered unsuccessful
+        # # run stopped by us may be considered unsuccessful
         # res.loc[res["n_elim"] == res["n_data"], "success"] = False
         # unsuccessful runs will not count
         res.loc[res["success"] == False, "nb_queries"] = np.inf
